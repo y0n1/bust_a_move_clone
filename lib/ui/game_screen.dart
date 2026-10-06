@@ -12,6 +12,18 @@ import 'package:flutter/scheduler.dart';
 import '../game/engine.dart';
 import '../game/model.dart';
 
+/// Minimum supported viewport width (covers ~95% of smartphones).
+const double minViewportWidth = 360;
+
+/// Maximum supported viewport width (covers tablets and standard desktops).
+const double maxViewportWidth = 1024;
+
+/// Minimum bubble size in pixels (ensures touch targets ≥ 44px and text readable).
+const double minBubbleSize = 32;
+
+/// Maximum bubble size in pixels (prevents excessive scaling on large screens).
+const double maxBubbleSize = 120;
+
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key, required this.engine});
 
@@ -86,6 +98,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   /// The board in board-space spans [cols] horizontally and [rows + 1.2]
   /// vertically (grid + cannon area). We scale to fit within [size] while
   /// preserving the aspect ratio, then center the result.
+  ///
+  /// Bubble size is clamped to [minBubbleSize]..[maxBubbleSize] to ensure
+  /// touch targets remain usable and the game doesn't scale excessively on
+  /// large viewports.
   void _computeLayout(Size size) {
     final boardWidth = _engine.cols;
     final boardHeight = _engine.rows + 1.2;
@@ -99,6 +115,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       // Height is the limiting factor — fit by width.
       bubble = size.width / boardWidth;
     }
+
+    // Clamp bubble size to viewport constraints.
+    bubble = bubble.clamp(minBubbleSize, maxBubbleSize);
 
     final boardPixelWidth = boardWidth * bubble;
     final boardPixelHeight = boardHeight * bubble;
