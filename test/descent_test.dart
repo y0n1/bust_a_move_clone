@@ -141,6 +141,68 @@ void main() {
     });
   });
 
+  group('_nearestFreeCell bounds', () {
+    test('can return a cell at row rows when preferred is occupied', () {
+      // Build a board where every cell from row 0 to row (rows-1) is
+      // occupied with mixed colors, and the preferred snap cell is
+      // occupied. This forces _nearestFreeCell to BFS past row rows-1
+      // and return a cell at row rows (the descent row).
+      final cols = 5;
+      final rows = 4;
+      final colors = [
+        BubbleColor.red,
+        BubbleColor.green,
+        BubbleColor.blue,
+        BubbleColor.yellow,
+        BubbleColor.purple,
+      ];
+      final bubbles = <String, Bubble>{};
+      for (var r = 0; r < rows; r++) {
+        final colsInRow = r.isEven ? cols : cols - 1;
+        for (var c = 0; c < colsInRow; c++) {
+          bubbles['$r:$c'] = Bubble(
+            color: colors[(r * cols + c) % colors.length],
+            row: r,
+            col: c,
+          );
+        }
+      }
+      final e = _engine(cols: cols, rows: rows, colors: colors.length);
+      var s = GameState(
+        bubbles: bubbles,
+        projectile: null,
+        nextColors: colors.take(3).toList(),
+        score: 0,
+        lives: 3,
+        level: 1,
+        bubbleRow: 0,
+        status: GameStatus.playing,
+        poppedThisShot: 0,
+      );
+      // Fire a shot straight up so the projectile lands at a known position.
+      // The snap will hit the bottom row (rows-1), which is fully occupied.
+      // _nearestFreeCell must be able to return a cell at row 'rows'.
+      var s2 = e.shoot(s, 0);
+      var ticks = 0;
+      while (s2.projectile != null && s2.status == GameStatus.playing && ticks < 500) {
+        s2 = e.tick(s2);
+        ticks++;
+      }
+      // The new bubble should have been placed at row 'rows' (the descent row)
+      // because all cells from 0..rows-1 are occupied.
+      // The game status should be 'lost' since a bubble is now at row 'rows',
+      // but the bubble should still be in the state (not cleared).
+      var foundRowRows = false;
+      for (final b in s2.bubbles.values) {
+        if (b.row == rows) foundRowRows = true;
+      }
+      expect(foundRowRows, isTrue,
+          reason: '_nearestFreeCell should have returned a cell at row $rows');
+      expect(s2.status, GameStatus.lost,
+          reason: 'a bubble at row rows should trigger lost status');
+    });
+  });
+
   group('scoring', () {
     test('popping a 3-bubble match awards score', () {
       final e = _engine(cols: 5, rows: 4);
