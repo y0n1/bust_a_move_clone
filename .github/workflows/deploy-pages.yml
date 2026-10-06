@@ -31,7 +31,7 @@ jobs:
       - run: flutter pub get
 
       - name: Build Flutter Web
-        run: flutter build web --release
+        run: flutter build web --release --base-href /bust_a_move_clone/
 
       - name: Upload build artifact
         uses: actions/upload-pages-artifact@v3
