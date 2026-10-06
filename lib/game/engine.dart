@@ -68,7 +68,10 @@ class Engine {
   /// room for the cluster to descend toward the cannon as the player
   /// shoots. The bottom half is empty and will be filled by the
   /// descending cluster.
-  GameState startLevel() {
+  ///
+  /// [initialLives] sets the starting lives count. Defaults to 3 for a
+  /// new game; used internally when resetting after a life loss.
+  GameState startLevel({int initialLives = 3}) {
     final rng = this.rng;
     final palette = _activePalette();
 
@@ -94,7 +97,7 @@ class Engine {
       projectile: null,
       nextColors: nextColors,
       score: 0,
-      lives: 3,
+      lives: initialLives,
       level: 1,
       bubbleRow: 0,
       status: GameStatus.playing,
@@ -278,15 +281,27 @@ class Engine {
     final newBubbleRow = newRow + 1;
 
     final nextColors = _refill(s.nextColors);
+    var status = _computeStatus(rekeyed, newBubbleRow);
+    var lives = s.lives;
+
+    // Handle life loss: if a bubble reached the cannon line, decrement lives.
+    if (status == GameStatus.lost) {
+      lives--;
+      if (lives > 0) {
+        // Reset the board but preserve remaining lives.
+        return startLevel(initialLives: lives);
+      }
+    }
+
     final next = GameState(
       bubbles: rekeyed,
       projectile: null,
       nextColors: nextColors,
       score: score,
-      lives: s.lives,
+      lives: lives,
       level: s.level,
       bubbleRow: newBubbleRow,
-      status: _computeStatus(rekeyed, newBubbleRow),
+      status: status,
       poppedThisShot: popped,
     );
     return next;
