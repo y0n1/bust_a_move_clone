@@ -165,12 +165,15 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   void _restart() {
     setState(() {
-      if (_state.status == GameStatus.lost && _state.lives > 0) {
+      if (_state.status == GameStatus.won) {
+        // Level cleared — advance to next level.
+        _state = _engine.startLevel(level: _state.level + 1);
+      } else if (_state.status == GameStatus.lost && _state.lives > 0) {
         // Player lost a life and the wall reached the cannon.
         // Reset the board with remaining lives.
         _state = _engine.startLevel(initialLives: _state.lives - 1);
       } else {
-        // Full restart (won, or lives == 0).
+        // Full restart (won and no lives, or lives == 0).
         _state = _engine.startLevel();
       }
       _aimAngle = 0;
@@ -420,7 +423,9 @@ class _StatusOverlay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                won ? 'LEVEL CLEARED!' : 'GAME OVER',
+                won
+                    ? 'LEVEL ${state.level} CLEARED!'
+                    : 'GAME OVER',
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -433,6 +438,14 @@ class _StatusOverlay extends StatelessWidget {
                 style: const TextStyle(
                     color: Color(0xFFFFFFFF), fontSize: 20),
               ),
+              if (won) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Level ${state.level + 1} awaits!',
+                  style: const TextStyle(
+                      color: Color(0xFFFFFFFF), fontSize: 16),
+                ),
+              ],
               if (lost) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -447,7 +460,9 @@ class _StatusOverlay extends StatelessWidget {
               FilledButton(
                 onPressed: onRestart,
                 child: Text(
-                  lost && state.lives > 0 ? 'CONTINUE' : 'PLAY AGAIN',
+                  won
+                      ? 'CONTINUE'
+                      : (lost && state.lives > 0 ? 'CONTINUE' : 'PLAY AGAIN'),
                 ),
               ),
             ],
