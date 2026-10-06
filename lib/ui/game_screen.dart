@@ -214,7 +214,7 @@ class _GamePainter extends CustomPainter {
     _drawCannon(canvas, cannon, bubble * 0.55, aimAngle);
 
     // Death line (subtle).
-    final deathY = boardToScreen(0, engine.rows - 1).dy + bubble * 0.5;
+    final deathY = boardToScreen(0, engine.rows.toDouble()).dy + bubble * 0.5;
     final line = Paint()
       ..color = const Color(0x33FF5252)
       ..strokeWidth = 1;
