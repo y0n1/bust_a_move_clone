@@ -25,6 +25,87 @@ import 'model.dart';
 /// extend at least one row past the board boundary.
 const int descentSlack = 8;
 
+/// Configuration for a single level in the progression.
+class LevelConfig {
+  const LevelConfig({
+    required this.level,
+    required this.cols,
+    required this.rows,
+    required this.activeColorCount,
+    required this.projectileSpeed,
+    required this.descentInterval,
+  });
+
+  /// Level number (1-based).
+  final int level;
+
+  /// Number of columns on even rows. Odd rows have [cols]-1.
+  final int cols;
+
+  /// Number of rows on the board.
+  final int rows;
+
+  /// Number of colors in the active palette (2..6).
+  final int activeColorCount;
+
+  /// Projectile speed in board-space units per tick.
+  final double projectileSpeed;
+
+  /// How many shots between wall descents. 1 = every shot, 2 = every other.
+  final int descentInterval;
+
+  /// Lookup table for levels 1 through 5+.
+  static const List<LevelConfig> all = [
+    LevelConfig(
+      level: 1,
+      cols: 9,
+      rows: 6,
+      activeColorCount: 4,
+      projectileSpeed: 0.6,
+      descentInterval: 1,
+    ),
+    LevelConfig(
+      level: 2,
+      cols: 9,
+      rows: 7,
+      activeColorCount: 5,
+      projectileSpeed: 0.6,
+      descentInterval: 1,
+    ),
+    LevelConfig(
+      level: 3,
+      cols: 9,
+      rows: 8,
+      activeColorCount: 5,
+      projectileSpeed: 0.6,
+      descentInterval: 2,
+    ),
+    LevelConfig(
+      level: 4,
+      cols: 9,
+      rows: 8,
+      activeColorCount: 6,
+      projectileSpeed: 0.7,
+      descentInterval: 1,
+    ),
+    // Levels 5+ use full board with max difficulty.
+    LevelConfig(
+      level: 5,
+      cols: 9,
+      rows: 9,
+      activeColorCount: 6,
+      projectileSpeed: 0.7,
+      descentInterval: 1,
+    ),
+  ];
+
+  /// Get config for a given level number. Levels above 5 use the level 5 config.
+  static LevelConfig forLevel(int level) {
+    if (level < 1) throw ArgumentError.value(level, 'level', 'must be >= 1');
+    return all.where((c) => c.level == level).firstOrNull ?? all.last;
+  }
+}
+
 class Engine {
   /// Number of columns on even rows (row 0). Odd rows have [cols]-1.
   final int cols;
@@ -47,19 +128,40 @@ class Engine {
   /// How many colors are in the active palette (2..6).
   final int activeColorCount;
 
+  /// How many shots between wall descents for this level.
+  final int descentInterval;
+
+  /// Number of shots taken in the current level (for descent interval).
+  int _shotsTaken = 0;
+
   Engine({
     required this.cols,
     required this.rows,
     required this.projectileSpeed,
     required this.rng,
     int? activeColorCount,
+    int? descentInterval,
   })  : cannonX = cols / 2,
         cannonY = rows + 1,
-        activeColorCount = math.min(6, activeColorCount ?? 6) {
+        activeColorCount = math.min(6, activeColorCount ?? 6),
+        descentInterval = descentInterval ?? 1 {
     if (this.activeColorCount < 2) {
       throw ArgumentError.value(activeColorCount, 'activeColorCount',
           'must be >= 2');
     }
+  }
+
+  /// Create an engine configured for a specific level.
+  factory Engine.forLevel(int level, {required math.Random rng}) {
+    final config = LevelConfig.forLevel(level);
+    return Engine(
+      cols: config.cols,
+      rows: config.rows,
+      projectileSpeed: config.projectileSpeed,
+      rng: rng,
+      activeColorCount: config.activeColorCount,
+      descentInterval: config.descentInterval,
+    );
   }
 
   /// Build a fresh [GameState] for the start of a level.
@@ -71,9 +173,13 @@ class Engine {
   ///
   /// [initialLives] sets the starting lives count. Defaults to 3 for a
   /// new game; used internally when resetting after a life loss.
-  GameState startLevel({int initialLives = 3}) {
+  /// [level] sets the level number (1-based). Defaults to 1.
+  GameState startLevel({int initialLives = 3, int level = 1}) {
     final rng = this.rng;
     final palette = _activePalette();
+
+    // Reset shot counter for the new level.
+    _shotsTaken = 0;
 
     // Fill the top half of the board with random bubbles. The cluster
     // descends from here toward the cannon as the player shoots.
@@ -98,7 +204,7 @@ class Engine {
       nextColors: nextColors,
       score: 0,
       lives: initialLives,
-      level: 1,
+      level: level,
       bubbleRow: 0,
       status: GameStatus.playing,
       poppedThisShot: 0,
@@ -277,8 +383,11 @@ class Engine {
     // Descend the wall: after every shot the bubble cluster moves one row
     // toward the cannon (down the screen). Bubbles that were at row 0 are
     // now at row 1, etc. The top row becomes available for the next shot.
-    final rekeyed = _applyDescent(bubbles);
-    final newBubbleRow = newRow + 1;
+    // Some levels have a slower descent rate (e.g., level 3: 1 row / 2 shots).
+    _shotsTaken++;
+    final shouldDescent = _shotsTaken % descentInterval == 0;
+    final rekeyed = shouldDescent ? _applyDescent(bubbles) : bubbles;
+    final newBubbleRow = shouldDescent ? newRow + 1 : newRow;
 
     final nextColors = _refill(s.nextColors);
     var status = _computeStatus(rekeyed, newBubbleRow);

@@ -163,4 +163,105 @@ void main() {
       expect(s2.status, s.status);
     });
   });
+
+  group('level progression', () {
+    test('LevelConfig.forLevel returns correct params for each level', () {
+      expect(LevelConfig.forLevel(1).cols, 9);
+      expect(LevelConfig.forLevel(1).rows, 6);
+      expect(LevelConfig.forLevel(1).activeColorCount, 4);
+      expect(LevelConfig.forLevel(1).descentInterval, 1);
+
+      expect(LevelConfig.forLevel(2).cols, 9);
+      expect(LevelConfig.forLevel(2).rows, 7);
+      expect(LevelConfig.forLevel(2).activeColorCount, 5);
+      expect(LevelConfig.forLevel(2).descentInterval, 1);
+
+      expect(LevelConfig.forLevel(3).cols, 9);
+      expect(LevelConfig.forLevel(3).rows, 8);
+      expect(LevelConfig.forLevel(3).activeColorCount, 5);
+      expect(LevelConfig.forLevel(3).descentInterval, 2);
+
+      expect(LevelConfig.forLevel(4).cols, 9);
+      expect(LevelConfig.forLevel(4).rows, 8);
+      expect(LevelConfig.forLevel(4).activeColorCount, 6);
+      expect(LevelConfig.forLevel(4).descentInterval, 1);
+
+      expect(LevelConfig.forLevel(5).cols, 9);
+      expect(LevelConfig.forLevel(5).rows, 9);
+      expect(LevelConfig.forLevel(5).activeColorCount, 6);
+      expect(LevelConfig.forLevel(5).descentInterval, 1);
+
+      // Levels above 5 use the level 5 config.
+      expect(LevelConfig.forLevel(10).rows, 9);
+      expect(LevelConfig.forLevel(10).activeColorCount, 6);
+    });
+
+    test('Engine.forLevel creates engine with correct params', () {
+      final e = Engine.forLevel(1, rng: math.Random(42));
+      expect(e.cols, 9);
+      expect(e.rows, 6);
+      expect(e.activeColorCount, 4);
+      expect(e.projectileSpeed, 0.6);
+      expect(e.descentInterval, 1);
+
+      final e3 = Engine.forLevel(3, rng: math.Random(42));
+      expect(e3.rows, 8);
+      expect(e3.activeColorCount, 5);
+      expect(e3.descentInterval, 2);
+    });
+
+    test('startLevel accepts level parameter', () {
+      final e = _engine();
+      final s = e.startLevel(level: 3);
+      expect(s.level, 3);
+    });
+
+    test('level progression: winning increments level', () {
+      // Simulate winning level 1 by creating a state with an empty board.
+      // The engine's startLevel with level=2 should produce a board with
+      // level 2 parameters.
+      final e = Engine.forLevel(2, rng: math.Random(42));
+      final s = e.startLevel(level: 1);
+      expect(s.level, 1);
+      expect(s.bubbles.length, greaterThan(0));
+
+      // Simulate winning: empty the board (in practice this happens via
+      // matches, but for testing we just check the level transition).
+      final wonState = s.copyWith(bubbles: {}, status: GameStatus.won);
+      expect(wonState.status, GameStatus.won);
+      expect(wonState.level, 1);
+
+      // After winning, the UI calls startLevel(level: wonState.level + 1).
+      final nextLevel = e.startLevel(level: wonState.level + 1);
+      expect(nextLevel.level, 2);
+      // Level 2 should have 7 rows (vs level 1's 6).
+      expect(e.rows, 7);
+    });
+
+    test('level 3 has slower descent (interval 2)', () {
+      final e = Engine.forLevel(3, rng: math.Random(42));
+      final s = e.startLevel(level: 3);
+      expect(e.descentInterval, 2);
+
+      // After 1 shot, no descent should have happened (interval is 2).
+      var s2 = e.shoot(s, 0);
+      var ticks = 0;
+      while (s2.projectile != null && s2.status == GameStatus.playing && ticks < 100) {
+        s2 = e.tick(s2);
+        ticks++;
+      }
+      // After 1 shot, bubbleRow should still be 0 (no descent yet).
+      expect(s2.bubbleRow, 0, reason: 'first shot should not descend');
+
+      // After 2 shots, descent should have happened.
+      var s3 = e.shoot(s2, 0);
+      ticks = 0;
+      while (s3.projectile != null && s3.status == GameStatus.playing && ticks < 100) {
+        s3 = e.tick(s3);
+        ticks++;
+      }
+      // After 2 shots, bubbleRow should be 1.
+      expect(s3.bubbleRow, 1, reason: 'second shot should descend');
+    });
+  });
 }
