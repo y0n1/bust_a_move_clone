@@ -19,6 +19,12 @@ import 'dart:math' as math;
 
 import 'model.dart';
 
+/// Number of extra rows below the board used for BFS slack in
+/// [_snapToHex] and [_matchGroupAt]. Descent bubbles occupy row
+/// [rows] before the loss condition triggers, so the search must
+/// extend at least one row past the board boundary.
+const int descentSlack = 8;
+
 class Engine {
   /// Number of columns on even rows (row 0). Odd rows have [cols]-1.
   final int cols;
@@ -230,7 +236,7 @@ class Engine {
     final seen = <(int, int)>{preferred};
     while (queue.isNotEmpty) {
       final (r, c) = queue.removeAt(0);
-      if (r < 0 || r >= rows) continue;
+      if (r < 0 || r > rows) continue;
       if (r.isEven && (c < 0 || c >= cols)) continue;
       if (r.isOdd && (c < 0 || c >= cols - 1)) continue;
       if (!s.bubbles.containsKey('$r:$c')) return (r, c);
@@ -297,7 +303,7 @@ class Engine {
       final (r, c) = stack.removeLast();
       for (final n in neighborsOf(r, c)) {
         final (nr, nc) = n;
-        if (nr < 0 || nr >= rows + 8) continue; // allow some slack for descent
+        if (nr < 0 || nr >= rows + descentSlack) continue;
         final key = '$nr:$nc';
         if (group.contains(key)) continue;
         final b = bubbles[key];
@@ -416,7 +422,7 @@ extension on Engine {
     // Find the (row, col) whose center is closest to (x, y).
     (int, int) best = (0, 0);
     double bestDist = double.infinity;
-    for (var r = 0; r < rows + 8; r++) {
+    for (var r = 0; r < rows + descentSlack; r++) {
       final colsInRow = r.isEven ? cols : cols - 1;
       for (var c = 0; c < colsInRow; c++) {
         final (cx, cy) = centerOf(r, c);
