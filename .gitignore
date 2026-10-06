@@ -48,7 +48,8 @@ app.*.map.json
 .widget_preview/
 
 # Python / CDP playback harness
-.playback-venv/
+.venv/
+
 tools/__pycache__/
 
 # Agent workspace artifacts
