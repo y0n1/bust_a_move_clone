@@ -84,7 +84,6 @@ void main() {
     test('detached clusters fall off the board', () {
       // Build a board where a single bubble is isolated from the rest.
       // We'll use a small board and manually construct the state.
-      final e = _engine(cols: 5, rows: 4);
       // Create a board with two disconnected clusters:
       //   row 0: A B C D E  (all connected)
       //   row 1: . . . . .  (empty)
