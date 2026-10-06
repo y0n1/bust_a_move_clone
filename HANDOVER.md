@@ -12,7 +12,7 @@ A Flutter web clone of the 1994 arcade bubble-shooter. Pure-Dart engine + Flutte
    - Flutter SDK at `/home/y0n1/.flutter/bin/flutter` (3.47.1) — two telemetry-file permission issues were fixed (`~/.config/flutter/tool_state`, `~/.dart-tool/dart-flutter-telemetry.config`)
    - Release web bundle built (`flutter build web --release`) and served on `http://127.0.0.1:8400` (Python `http.server` background job)
    - Headed Chrome on display `:1` with CDP on port 9322 (user can watch the browser)
-   - CDP harness: `tools/cdp.py` + `.playback-venv/` (Python + `websockets`) — screenshots, mouse events at pixel coords, JS eval
+   - CDP harness: `tools/cdp.py` + `.venv/` (Python + `websockets`) — screenshots, mouse events at pixel coords, JS eval
    - Verified: start screen → PLAY → aim → fire → observe result
 
 2. **Bug #1 diagnosed and fixed** (descent logic inverted):
@@ -67,7 +67,7 @@ A Flutter web clone of the 1994 arcade bubble-shooter. Pure-Dart engine + Flutte
 | Chrome | `/usr/bin/google-chrome` (154), headed on `DISPLAY=:1` |
 | CDP port | `9322` |
 | Web server | `http://127.0.0.1:8400` (serving `build/web/`) |
-| CDP harness | `tools/cdp.py` + `.playback-venv/bin/python` |
+| CDP harness | `tools/cdp.py` + `.venv/bin/python` |
 | GitHub repo | `git@github.com:y0n1/bust_a_move_clone.git` (SSH, user's key) |
 | Kanban | https://github.com/y0n1/bust_a_move_clone/projects (5 issues in Backlog) |
 
@@ -109,7 +109,7 @@ curl -s http://127.0.0.1:9322/json/list | python3 -c "import json,sys; ts=json.l
 - **Lives / level** are still inert (issues #2, #3).
 - **No sound** — the spec mentions audio; not implemented.
 - **`web/icons/Icon-maskable-512.png`** — confirm it's in the pushed history (the last API push was interrupted; the user re-aligned `main` via SSH, so it should be there).
-- **`.playback-venv/`** is a local artifact (Python venv); add to `.gitignore` if it's not already covered.
+- **`.venv/`** is a local artifact (Python venv); add to `.gitignore` if it's not already covered.
 - **`outputs/` and `current_session_context/`** in the project root are agent workspace artifacts; not part of the game.
 
 ## 6. Conventions (from CLAUDE.md)
