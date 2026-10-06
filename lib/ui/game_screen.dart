@@ -164,9 +164,18 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   }
 
   void _restart() {
-    _state = _engine.startLevel();
-    _aimAngle = 0;
-    _hasPointer = false;
+    setState(() {
+      if (_state.status == GameStatus.lost && _state.lives > 0) {
+        // Player lost a life and the wall reached the cannon.
+        // Reset the board with remaining lives.
+        _state = _engine.startLevel(initialLives: _state.lives - 1);
+      } else {
+        // Full restart (won, or lives == 0).
+        _state = _engine.startLevel();
+      }
+      _aimAngle = 0;
+      _hasPointer = false;
+    });
   }
 }
 
@@ -398,6 +407,7 @@ class _StatusOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final won = state.status == GameStatus.won;
+    final lost = state.status == GameStatus.lost;
     return Container(
       color: Colors.black54,
       alignment: Alignment.center,
@@ -423,10 +433,22 @@ class _StatusOverlay extends StatelessWidget {
                 style: const TextStyle(
                     color: Color(0xFFFFFFFF), fontSize: 20),
               ),
+              if (lost) ...[
+                const SizedBox(height: 8),
+                Text(
+                  state.lives > 0
+                      ? 'You have ${state.lives} lives left — tap to continue'
+                      : 'No lives remaining',
+                  style: const TextStyle(
+                      color: Color(0xFFFFFFFF), fontSize: 16),
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: onRestart,
-                child: const Text('PLAY AGAIN'),
+                child: Text(
+                  lost && state.lives > 0 ? 'CONTINUE' : 'PLAY AGAIN',
+                ),
               ),
             ],
           ),

@@ -188,18 +188,15 @@ void main() {
         s2 = e.tick(s2);
         ticks++;
       }
-      // The new bubble should have been placed at row 'rows' (the descent row)
-      // because all cells from 0..rows-1 are occupied.
-      // The game status should be 'lost' since a bubble is now at row 'rows',
-      // but the bubble should still be in the state (not cleared).
-      var foundRowRows = false;
-      for (final b in s2.bubbles.values) {
-        if (b.row == rows) foundRowRows = true;
-      }
-      expect(foundRowRows, isTrue,
-          reason: '_nearestFreeCell should have returned a cell at row $rows');
-      expect(s2.status, GameStatus.lost,
-          reason: 'a bubble at row rows should trigger lost status');
+      // Because all normal cells are occupied, _nearestFreeCell returns a
+      // cell at row 'rows'. The engine detects the loss condition, decrements
+      // lives, and resets the board (returning to playing status).
+      expect(s2.lives, 2,
+          reason: 'one life should be lost when wall reaches cannon');
+      expect(s2.status, GameStatus.playing,
+          reason: 'game continues after life loss with remaining lives');
+      expect(s2.bubbles.isNotEmpty, isTrue,
+          reason: 'board should be reset with a fresh cluster');
     });
   });
 
@@ -237,6 +234,64 @@ void main() {
           reason: 'popping a match should award score');
       expect(s2.bubbles.length, lessThan(5),
           reason: 'some bubbles should have been popped');
+    });
+  });
+
+  group('lives decrement on wall reach', () {
+    test('losing a life resets the board and decrements lives', () {
+      final e = _engine(cols: 9, rows: 8);
+
+      // Construct a GameState with a bubble already at row 7 (one row
+      // above the cannon line). When the next shot settles, descent will
+      // push it to row 8, triggering the loss condition.
+      var s = GameState(
+        bubbles: {'7:0': Bubble(color: BubbleColor.red, row: 7, col: 0)},
+        projectile: null,
+        nextColors: [BubbleColor.red, BubbleColor.green, BubbleColor.blue],
+        score: 0,
+        lives: 3,
+        level: 1,
+        bubbleRow: 0,
+        status: GameStatus.playing,
+        poppedThisShot: 0,
+      );
+
+      // Place a projectile at row 7, column 7 (the far right of the
+      // bottom row — guaranteed empty since only col 0 has a bubble).
+      final target = e.centerOf(7, 7);
+      var p = Projectile(
+        color: BubbleColor.green,
+        x: target.$1,
+        y: target.$2 + 0.5,
+        vx: 0,
+        vy: -0.265,
+      );
+
+      s = GameState(
+        bubbles: s.bubbles,
+        projectile: p,
+        nextColors: s.nextColors,
+        score: s.score,
+        lives: s.lives,
+        level: s.level,
+        bubbleRow: s.bubbleRow,
+        status: s.status,
+        poppedThisShot: s.poppedThisShot,
+      );
+
+      // Advance until the projectile settles.
+      var ticks = 0;
+      while (s.projectile != null && s.status == GameStatus.playing && ticks < 500) {
+        s = e.tick(s);
+        ticks++;
+      }
+
+      // The bubble at row 7 was pushed to row 8 by descent, triggering
+      // the loss condition. The engine should have decremented lives and
+      // reset the board.
+      expect(s.lives, 2, reason: 'one life should be lost');
+      expect(s.bubbles.isNotEmpty, isTrue, reason: 'board should be reset');
+      expect(s.status, GameStatus.playing, reason: 'game should continue');
     });
   });
 }
