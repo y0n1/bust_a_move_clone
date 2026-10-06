@@ -71,14 +71,15 @@ void main() {
       final e = _engine();
       final s = e.startLevel();
       final s2 = _settleShot(s, e);
-      // After descent, the top row (row 0) should still contain bubbles.
-      // (They were row 1 before the shot, and moved up to row 0.)
-      var topRowCount = 0;
+      // After descent, the original row 0 bubbles moved to row 1.
+      // Row 0 should be empty (no original bubbles there), but row 1
+      // should have the descended bubbles.
+      var row1RowCount = 0;
       for (final b in s2.bubbles.values) {
-        if (b.row == 0) topRowCount++;
+        if (b.row == 1) row1RowCount++;
       }
-      expect(topRowCount, greaterThan(0),
-          reason: 'top row should have bubbles after descent');
+      expect(row1RowCount, greaterThan(0),
+          reason: 'row 1 should have the descended bubbles from row 0');
     });
 
     test('detached clusters fall off the board', () {
