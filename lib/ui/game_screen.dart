@@ -32,6 +32,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   /// Has a pointer ever been received? (Avoids aim at (0,0) on first frame.)
   bool _hasPointer = false;
 
+  /// Layout state: bubble size in pixels and offset to center the board.
+  double _bubbleSize = 0;
+  double _offsetX = 0;
+  double _offsetY = 0;
+
   @override
   void initState() {
     super.initState();
@@ -57,14 +62,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   }
 
   /// Convert a pointer in logical pixels to a board-space aim angle.
-  void _updateAim(Offset globalPos, Size playfieldSize) {
-    if (playfieldSize.width == 0 || playfieldSize.height == 0) return;
-    final cannonX = _engine.cannonX;
-    final cannonY = _engine.cannonY;
-    // Convert the cannon to logical pixels.
-    final px = _boardToScreen(cannonX, cannonY, playfieldSize);
-    final dx = globalPos.dx - px.dx;
-    final dy = globalPos.dy - px.dy;
+  void _updateAim(Offset localPos, Size size) {
+    if (size.width == 0 || size.height == 0) return;
+    final cannonPx = _boardToScreen(_engine.cannonX, _engine.cannonY, size);
+    final dx = localPos.dx - cannonPx.dx;
+    final dy = localPos.dy - cannonPx.dy;
     // Only allow aiming upward (dy < 0 in screen space).
     var angle = math.atan2(dx, -dy);
     // Clamp to a reasonable range: -60° to +60° from vertical.
@@ -74,14 +76,35 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     _aimAngle = angle;
   }
 
-  /// Convert a board-space point to logical pixels given the playfield size.
+  /// Convert a board-space point to logical pixels given the canvas size.
   Offset _boardToScreen(double x, double y, Size size) {
-    // The playfield is `cols` bubbles wide and `rows + 1.2` bubbles tall.
-    final bubble = size.width / _engine.cols;
-    return Offset(
-      (x - 0.5) * bubble + size.width / 2, // center the board
-      (y - 0.0) * bubble,
-    );
+    return Offset(x * _bubbleSize + _offsetX, y * _bubbleSize + _offsetY);
+  }
+
+  /// Compute the bubble size and offset to fit the board within [size].
+  ///
+  /// The board in board-space spans [cols] horizontally and [rows + 1.2]
+  /// vertically (grid + cannon area). We scale to fit within [size] while
+  /// preserving the aspect ratio, then center the result.
+  void _computeLayout(Size size) {
+    final boardWidth = _engine.cols;
+    final boardHeight = _engine.rows + 1.2;
+    final aspectRatio = boardWidth / boardHeight;
+
+    double bubble;
+    if (size.width / size.height > aspectRatio) {
+      // Width is the limiting factor — fit by height.
+      bubble = size.height / boardHeight;
+    } else {
+      // Height is the limiting factor — fit by width.
+      bubble = size.width / boardWidth;
+    }
+
+    final boardPixelWidth = boardWidth * bubble;
+    final boardPixelHeight = boardHeight * bubble;
+    _offsetX = (size.width - boardPixelWidth) / 2;
+    _offsetY = (size.height - boardPixelHeight) / 2;
+    _bubbleSize = bubble;
   }
 
   void _fire() {
@@ -93,37 +116,50 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B1E3A),
-      body: LayoutBuilder(builder: (context, constraints) {
-        final size = constraints.biggest;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            Listener(
-              onPointerMove: (event) {
-                _hasPointer = true;
-                _updateAim(event.localPosition, size);
-              },
-              onPointerDown: (event) {
-                _hasPointer = true;
-                _updateAim(event.localPosition, size);
-              },
-              onPointerUp: (_) => _fire(),
-              child: CustomPaint(
-                painter: _GamePainter(
-                  state: _state,
-                  engine: _engine,
-                  aimAngle: _aimAngle,
-                  hasPointer: _hasPointer,
-                ),
-                child: const SizedBox.expand(),
-              ),
-            ),
-            _Hud(state: _state, onRestart: _restart),
-            if (_state.status != GameStatus.playing)
-              _StatusOverlay(state: _state, onRestart: _restart),
-          ],
-        );
-      }),
+      body: Column(
+        children: [
+          // HUD at top — no overlap with canvas.
+          _Hud(state: _state, onRestart: _restart),
+          // Canvas area below HUD, fills remaining space.
+          Expanded(
+            child: LayoutBuilder(builder: (context, constraints) {
+              final size = constraints.biggest;
+              if (size.width == 0 || size.height == 0) return const SizedBox();
+              _computeLayout(size);
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  Listener(
+                    onPointerMove: (event) {
+                      _hasPointer = true;
+                      _updateAim(event.localPosition, size);
+                    },
+                    onPointerDown: (event) {
+                      _hasPointer = true;
+                      _updateAim(event.localPosition, size);
+                    },
+                    onPointerUp: (_) => _fire(),
+                    child: CustomPaint(
+                      painter: _GamePainter(
+                        state: _state,
+                        engine: _engine,
+                        aimAngle: _aimAngle,
+                        hasPointer: _hasPointer,
+                        bubbleSize: _bubbleSize,
+                        offsetX: _offsetX,
+                        offsetY: _offsetY,
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                  if (_state.status != GameStatus.playing)
+                    _StatusOverlay(state: _state, onRestart: _restart),
+                ],
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 
@@ -141,12 +177,18 @@ class _GamePainter extends CustomPainter {
     required this.engine,
     required this.aimAngle,
     required this.hasPointer,
+    required this.bubbleSize,
+    required this.offsetX,
+    required this.offsetY,
   });
 
   final GameState state;
   final Engine engine;
   final double aimAngle;
   final bool hasPointer;
+  final double bubbleSize;
+  final double offsetX;
+  final double offsetY;
 
   static const Map<BubbleColor, Color> _colors = {
     BubbleColor.red: Color(0xFFE53935),
@@ -163,9 +205,8 @@ class _GamePainter extends CustomPainter {
     final bg = Paint()..color = const Color(0xFF0B1E3A);
     canvas.drawRect(Offset.zero & size, bg);
 
-    final bubble = size.width / engine.cols;
     Offset boardToScreen(double x, double y) =>
-        Offset((x - 0.5) * bubble + size.width / 2, y * bubble);
+        Offset(x * bubbleSize + offsetX, y * bubbleSize + offsetY);
 
     // Aim line (dotted).
     if (hasPointer && state.projectile == null &&
@@ -173,8 +214,8 @@ class _GamePainter extends CustomPainter {
       final cannon = boardToScreen(engine.cannonX, engine.cannonY);
       const len = 3.5;
       final end = Offset(
-        cannon.dx + math.sin(aimAngle) * len * bubble,
-        cannon.dy - math.cos(aimAngle) * len * bubble,
+        cannon.dx + math.sin(aimAngle) * len * bubbleSize,
+        cannon.dy - math.cos(aimAngle) * len * bubbleSize,
       );
       final line = Paint()
         ..color = const Color(0x66FFFFFF)
@@ -199,22 +240,22 @@ class _GamePainter extends CustomPainter {
     for (final b in state.bubbles.values) {
       final (cx, cy) = engine.centerOf(b.row, b.col);
       final c = boardToScreen(cx, cy);
-      _drawBubble(canvas, c, bubble * 0.48, _colors[b.color]!);
+      _drawBubble(canvas, c, bubbleSize * 0.48, _colors[b.color]!);
     }
 
     // Projectile.
     final proj = state.projectile;
     if (proj != null) {
       final c = boardToScreen(proj.x, proj.y);
-      _drawBubble(canvas, c, bubble * 0.48, _colors[proj.color]!);
+      _drawBubble(canvas, c, bubbleSize * 0.48, _colors[proj.color]!);
     }
 
     // Cannon.
     final cannon = boardToScreen(engine.cannonX, engine.cannonY);
-    _drawCannon(canvas, cannon, bubble * 0.55, aimAngle);
+    _drawCannon(canvas, cannon, bubbleSize * 0.55, aimAngle);
 
     // Death line (subtle).
-    final deathY = boardToScreen(0, engine.rows.toDouble()).dy + bubble * 0.5;
+    final deathY = boardToScreen(0, engine.rows.toDouble()).dy;
     final line = Paint()
       ..color = const Color(0x33FF5252)
       ..strokeWidth = 1;
@@ -260,7 +301,9 @@ class _GamePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GamePainter old) =>
-      old.state != state || old.aimAngle != aimAngle;
+      old.state != state || old.aimAngle != aimAngle ||
+      old.bubbleSize != bubbleSize || old.offsetX != offsetX || old.offsetY != offsetY ||
+      old.hasPointer != hasPointer;
 }
 
 /// The top-of-screen HUD: score, lives, level, and the next-colors queue.
@@ -281,14 +324,11 @@ class _Hud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: 8,
-      left: 0,
-      right: 0,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        child: Row(
             children: [
               Expanded(
                 child: Text(
@@ -344,7 +384,6 @@ class _Hud extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }
