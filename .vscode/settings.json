@@ -1,9 +1,5 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "/^bash /home/y0n1/\\.flutter/bin/flutter build web --release 2>&1 \\| tail -3$/": {
-            "approve": true,
-            "matchCommandLine": true
-        },
         "/^cd /home/y0n1/Projects/bust_a_move_clone/build/web && python3 -m http\\.server 8400 &$/": {
             "approve": true,
             "matchCommandLine": true
