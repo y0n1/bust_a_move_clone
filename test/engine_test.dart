@@ -15,12 +15,13 @@ Engine _engine({int cols = 9, int rows = 8, int? seed, int? colors}) =>
 
 void main() {
   group('board generation', () {
-    test('startLevel produces a full board with the expected cell count', () {
+    test('startLevel fills the top half of the board with the expected cell count', () {
       final e = _engine(cols: 9, rows: 8);
       final s = e.startLevel();
-      // Even rows have `cols` cells, odd rows have `cols - 1`.
-      final even = 9 * 4; // 4 even rows (0,2,4,6)
-      final odd = 8 * 4; // 4 odd rows (1,3,5,7)
+      // The initial cluster fills rows 0..(rows/2 - 1) = 4 rows, leaving the
+      // bottom half empty so the cluster can descend toward the cannon.
+      final even = 9 * 2; // even rows 0, 2
+      final odd = 8 * 2; // odd rows 1, 3
       expect(s.bubbles.length, even + odd);
       expect(s.status, GameStatus.playing);
       expect(s.projectile, isNull);

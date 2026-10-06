@@ -46,3 +46,11 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Python / CDP playback harness
+.playback-venv/
+tools/__pycache__/
+
+# Agent workspace artifacts
+outputs/
+current_session_context/
