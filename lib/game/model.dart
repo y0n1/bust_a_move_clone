@@ -3,6 +3,8 @@
 /// Pure Dart, no Flutter imports, so it can be unit tested headlessly.
 library;
 
+import 'dart:math' as math;
+
 /// The 6 colors a bubble can be.
 ///
 /// Kept as a simple enum so the model layer has no dependency on
@@ -53,7 +55,7 @@ class Projectile {
   double vx;
   double vy;
 
-  double get speed => _sqrt(vx * vx + vy * vy);
+  double get speed => math.sqrt(vx * vx + vy * vy);
 
   bool get isMoving => vx != 0 || vy != 0;
 
@@ -61,15 +63,6 @@ class Projectile {
   void advance(double dt) {
     x += vx * dt;
     y += vy * dt;
-  }
-
-  static double _sqrt(double v) {
-    if (v <= 0) return 0;
-    var x = v;
-    for (var i = 0; i < 20; i++) {
-      x = (x + v / x) / 2;
-    }
-    return x;
   }
 }
 
