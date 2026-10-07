@@ -62,10 +62,8 @@ class StartScreen extends StatelessWidget {
                       horizontal: 32, vertical: 20),
                 ),
                 onPressed: () {
-                  final engine = Engine(
-                    cols: 9,
-                    rows: 8,
-                    projectileSpeed: 0.6,
+                  final engine = Engine.forLevel(
+                    1,
                     rng: math.Random(),
                   );
                   Navigator.of(context).pushReplacement(
