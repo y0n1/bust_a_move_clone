@@ -693,7 +693,7 @@ class _GamePainter extends CustomPainter {
     // Barrel: a rotated rectangle pointing in the aim direction.
     canvas.save();
     canvas.translate(center.dx, center.dy);
-    canvas.rotate(-angle);
+    canvas.rotate(angle);
     // Apply recoil offset along the barrel axis (negative y in local space).
     canvas.translate(0, recoilOffset);
     final barrel = Paint()..color = const Color(0xFFB0BEC5);

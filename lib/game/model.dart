@@ -84,6 +84,7 @@ class GameState {
     required this.poppedThisShot,
     required this.combo,
     required this.initialBubbleCount,
+    required this.shotsTaken,
   });
 
   /// Bubbles currently attached to the board, indexed by [Bubble.key].
@@ -116,6 +117,9 @@ class GameState {
   /// Used by the UI to render the level-clear progress bar.
   final int initialBubbleCount;
 
+  /// Number of shots taken in the current level (for descent interval).
+  final int shotsTaken;
+
   /// Return a copy of this state with the given fields replaced.
   GameState copyWith({
     Map<String, Bubble>? bubbles,
@@ -129,6 +133,7 @@ class GameState {
     int? poppedThisShot,
     int? combo,
     int? initialBubbleCount,
+    int? shotsTaken,
   }) {
     return GameState(
       bubbles: bubbles ?? this.bubbles,
@@ -142,6 +147,7 @@ class GameState {
       poppedThisShot: poppedThisShot ?? this.poppedThisShot,
       combo: combo ?? this.combo,
       initialBubbleCount: initialBubbleCount ?? this.initialBubbleCount,
+      shotsTaken: shotsTaken ?? this.shotsTaken,
     );
   }
 }

@@ -289,6 +289,7 @@ void main() {
           poppedThisShot: 0,
           combo: combo,
           initialBubbleCount: 4,
+          shotsTaken: 0,
         );
 
     /// Place a [color] projectile just below (0,3) moving upward so it
