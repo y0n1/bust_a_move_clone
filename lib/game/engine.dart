@@ -23,14 +23,12 @@ import 'model.dart';
 /// [_matchGroupAt].
 ///
 /// When the wall descends, bubbles occupy row `rows` (one past the last
-/// board row) before the loss condition triggers. Both the match-group
-/// BFS and the snap-to-hex brute-force loop must search past the board
-/// boundary to handle these descent rows correctly.
+/// board row) before the loss condition triggers. The snap-to-hex inverse
+/// formula must search past the board boundary to handle these descent rows
+/// correctly, and the match-group BFS must be able to reach them.
 ///
 /// 8 is a safety margin: the largest board has 9 rows, so `rows + 8`
-/// covers any board up to 17 rows deep. It is large enough that no
-/// valid bubble position is ever missed, but small enough that the
-/// O(n) snap loop stays fast (max ~170 cells).
+/// covers any board up to 17 rows deep.
 const int descentSlack = 8;
 
 /// Configuration for a single level in the progression.
@@ -570,24 +568,47 @@ class Engine {
 }
 
 /// Snap a free-floating point to the nearest valid hex cell on the board.
+///
+/// O(1) inverse hex lookup: compute (row, col) directly from (x, y) using
+/// the centerOf formula inverted, then check the candidate and its 6 hex
+/// neighbors to find the true closest free cell.
 extension on Engine {
   (int, int) _snapToHex(double x, double y) {
-    // Find the (row, col) whose center is closest to (x, y).
-    (int, int) best = (0, 0);
-    double bestDist = double.infinity;
-    for (var r = 0; r < rows + descentSlack; r++) {
-      final colsInRow = r.isEven ? cols : cols - 1;
-      for (var c = 0; c < colsInRow; c++) {
-        final (cx, cy) = centerOf(r, c);
-        final dx = x - cx;
-        final dy = y - cy;
-        final d = dx * dx + dy * dy;
-        if (d < bestDist) {
-          bestDist = d;
-          best = (r, c);
+    // Invert centerOf to get a candidate cell:
+    //   y = row * _rowStep + _topPadding  →  row = (y - _topPadding) / _rowStep
+    //   x = col + (row.isOdd ? 0.5 : 0.0)  →  col = x - (row.isOdd ? 0.5 : 0.0)
+    var row = ((y - Engine._topPadding) / Engine._rowStep).round();
+    var col = (x - (row.isOdd ? 0.5 : 0.0)).round();
+
+    // Clamp to valid board + descent rows.
+    final maxRow = rows + descentSlack - 1;
+    row = row.clamp(0, maxRow);
+    final maxCol = row.isEven ? cols - 1 : cols - 2;
+    col = col.clamp(0, maxCol);
+
+    // Check the candidate and its 6 hex neighbors; pick the closest by
+    // squared Euclidean distance. At most 7 cells examined.
+    (int, int) best = (row, col);
+    double bestDist = _sqDist(x, y, row, col);
+    for (final (nr, nc) in neighborsOf(row, col)) {
+      if (nr >= 0 && nr <= maxRow) {
+        final nMaxCol = nr.isEven ? cols - 1 : cols - 2;
+        if (nc >= 0 && nc <= nMaxCol) {
+          final d = _sqDist(x, y, nr, nc);
+          if (d < bestDist) {
+            bestDist = d;
+            best = (nr, nc);
+          }
         }
       }
     }
     return best;
+  }
+
+  double _sqDist(double px, double py, int row, int col) {
+    final (cx, cy) = centerOf(row, col);
+    final dx = px - cx;
+    final dy = py - cy;
+    return dx * dx + dy * dy;
   }
 }
