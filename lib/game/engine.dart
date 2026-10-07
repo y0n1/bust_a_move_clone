@@ -208,6 +208,8 @@ class Engine {
       bubbleRow: 0,
       status: GameStatus.playing,
       poppedThisShot: 0,
+      combo: 0,
+      initialBubbleCount: bubbles.length,
     );
   }
 
@@ -369,12 +371,16 @@ class Engine {
     final group = _matchGroupAt(cell.$1, cell.$2, bubbles, p.color);
     var score = s.score;
     var popped = 0;
+    var combo = 0;
     if (group.length >= 3) {
       for (final k in group) {
         bubbles.remove(k);
         popped++;
       }
-      score += _popScore(group.length, s.poppedThisShot + 1);
+      // Combo: consecutive 3+ pops. The pop score is multiplied by the
+      // combo streak including this shot (first pop of a streak = x1).
+      combo = s.combo + 1;
+      score += _popScore(group.length) * combo;
       // Detached clusters fall.
       final fallen = _dropDetached(bubbles);
       score += _dropScore(fallen);
@@ -412,6 +418,8 @@ class Engine {
       bubbleRow: newBubbleRow,
       status: status,
       poppedThisShot: popped,
+      combo: combo,
+      initialBubbleCount: s.initialBubbleCount,
     );
     return next;
   }
@@ -529,10 +537,10 @@ class Engine {
     return rest.take(3).toList();
   }
 
-  int _popScore(int groupSize, int chainIndex) {
-    // 100 per bubble, x2 bonus on a chain of 3+, x3 on 4+, etc.
+  int _popScore(int groupSize) {
+    // 100 per bubble, plus a small bonus for 4+ pops.
+    // The combo multiplier is applied at the call site.
     var base = groupSize * 100;
-    if (chainIndex >= 2) base *= 2;
     if (groupSize >= 4) base += 50 * (groupSize - 3);
     return base;
   }
