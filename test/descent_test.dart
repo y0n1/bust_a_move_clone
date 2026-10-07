@@ -303,5 +303,51 @@ void main() {
       expect(s.bubbles.isNotEmpty, isTrue, reason: 'board should be reset');
       expect(s.status, GameStatus.playing, reason: 'game should continue');
     });
+
+    test('life loss on level N preserves the level', () {
+      final e = _engine(cols: 9, rows: 8);
+
+      // Start on level 2.
+      var s = e.startLevel(initialLives: 3, level: 2);
+      expect(s.level, 2);
+
+      // Construct a state with a bubble at row 7 (one row above cannon).
+      s = GameState(
+        bubbles: {'7:0': Bubble(color: BubbleColor.red, row: 7, col: 0)},
+        projectile: null,
+        nextColors: [BubbleColor.red, BubbleColor.green, BubbleColor.blue],
+        score: s.score,
+        lives: s.lives,
+        level: s.level,
+        bubbleRow: s.bubbleRow,
+        status: s.status,
+        poppedThisShot: s.poppedThisShot,
+        combo: s.combo,
+        initialBubbleCount: s.initialBubbleCount,
+      );
+
+      // Place a projectile that will settle and trigger descent.
+      final target = e.centerOf(7, 7);
+      final p = Projectile(
+        color: BubbleColor.green,
+        x: target.$1,
+        y: target.$2 + 0.5,
+        vx: 0,
+        vy: -0.265,
+      );
+      s = s.copyWith(projectile: p);
+
+      // Advance until the projectile settles.
+      var ticks = 0;
+      while (s.projectile != null && s.status == GameStatus.playing && ticks < 500) {
+        s = e.tick(s);
+        ticks++;
+      }
+
+      // Life lost (3 → 2), board reset, but level must still be 2.
+      expect(s.lives, 2, reason: 'one life should be lost');
+      expect(s.level, 2, reason: 'level must be preserved after life loss');
+      expect(s.status, GameStatus.playing, reason: 'game should continue');
+    });
   });
 }

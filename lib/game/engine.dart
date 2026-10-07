@@ -403,8 +403,9 @@ class Engine {
     if (status == GameStatus.lost) {
       lives--;
       if (lives > 0) {
-        // Reset the board but preserve remaining lives.
-        return startLevel(initialLives: lives);
+        // Reset the board but preserve remaining lives AND the level —
+        // a life loss re-plays the current level, not level 1.
+        return startLevel(initialLives: lives, level: s.level);
       }
     }
 
