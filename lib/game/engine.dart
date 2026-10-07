@@ -139,9 +139,6 @@ class Engine {
   /// How many shots between wall descents for this level.
   final int descentInterval;
 
-  /// Number of shots taken in the current level (for descent interval).
-  int _shotsTaken = 0;
-
   Engine({
     required this.cols,
     required this.rows,
@@ -186,9 +183,6 @@ class Engine {
     final rng = this.rng;
     final palette = _activePalette();
 
-    // Reset shot counter for the new level.
-    _shotsTaken = 0;
-
     // Fill the top half of the board with random bubbles. The cluster
     // descends from here toward the cannon as the player shoots.
     final clusterRows = (rows / 2).ceil();
@@ -218,6 +212,7 @@ class Engine {
       poppedThisShot: 0,
       combo: 0,
       initialBubbleCount: bubbles.length,
+      shotsTaken: 0,
     );
   }
 
@@ -398,8 +393,8 @@ class Engine {
     // toward the cannon (down the screen). Bubbles that were at row 0 are
     // now at row 1, etc. The top row becomes available for the next shot.
     // Some levels have a slower descent rate (e.g., level 3: 1 row / 2 shots).
-    _shotsTaken++;
-    final shouldDescent = _shotsTaken % descentInterval == 0;
+    final shotsTaken = s.shotsTaken + 1;
+    final shouldDescent = shotsTaken % descentInterval == 0;
     final rekeyed = shouldDescent ? _applyDescent(bubbles) : bubbles;
     final newBubbleRow = shouldDescent ? newRow + 1 : newRow;
 
@@ -429,6 +424,7 @@ class Engine {
       poppedThisShot: popped,
       combo: combo,
       initialBubbleCount: s.initialBubbleCount,
+      shotsTaken: shotsTaken,
     );
     return next;
   }

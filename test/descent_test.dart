@@ -110,6 +110,7 @@ void main() {
         poppedThisShot: 0,
         combo: 0,
         initialBubbleCount: 7,
+        shotsTaken: 0,
       );
       // Simulate a shot that pops the top row (all 5 bubbles).
       // After the pop, F and G at row 2 should be detached and fall.
@@ -182,6 +183,7 @@ void main() {
         poppedThisShot: 0,
         combo: 0,
         initialBubbleCount: 18,
+        shotsTaken: 0,
       );
       // Fire a shot straight up so the projectile lands at a known position.
       // The snap will hit the bottom row (rows-1), which is fully occupied.
@@ -227,6 +229,7 @@ void main() {
         poppedThisShot: 0,
         combo: 0,
         initialBubbleCount: 5,
+        shotsTaken: 0,
       );
       // Fire a red bubble straight up; it should land on the top row and
       // complete a 4-red match (or at least a 3-red match).
@@ -262,6 +265,7 @@ void main() {
         poppedThisShot: 0,
         combo: 0,
         initialBubbleCount: 1,
+        shotsTaken: 0,
       );
 
       // Place a projectile at row 7, column 7 (the far right of the
@@ -287,6 +291,7 @@ void main() {
         poppedThisShot: s.poppedThisShot,
         combo: s.combo,
         initialBubbleCount: s.initialBubbleCount,
+        shotsTaken: 0,
       );
 
       // Advance until the projectile settles.
@@ -324,6 +329,7 @@ void main() {
         poppedThisShot: s.poppedThisShot,
         combo: s.combo,
         initialBubbleCount: s.initialBubbleCount,
+        shotsTaken: 0,
       );
 
       // Place a projectile that will settle and trigger descent.
