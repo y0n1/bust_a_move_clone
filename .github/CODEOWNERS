@@ -1,0 +1,12 @@
+# Engine layer — requires domain knowledge
+lib/game/ y0n1
+
+# UI layer — requires Flutter expertise
+lib/ui/ y0n1
+
+# Tests — requires understanding of game logic
+test/ y0n1
+
+# Project configuration
+.github/ y0n1
+pubspec.yaml y0n1
