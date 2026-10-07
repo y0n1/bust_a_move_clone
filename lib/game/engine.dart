@@ -459,13 +459,29 @@ class Engine {
   /// Remove every bubble in [bubbles] that is no longer connected to the
   /// main cluster and return how many fell.
   ///
-  /// In a bubble shooter, "attached" means connected to the top of the
-  /// board (the wall). When a match pops, any cluster that is no longer
-  /// touching the wall falls off the bottom of the board.
+  /// In a bubble shooter, "attached" means connected to the wall (top of the
+  /// board) via same-color neighbors. When a match pops, any cluster that
+  /// is no longer touching the wall falls off the bottom.
   ///
-  /// We model this by flood-filling from the topmost row that still has
-  /// bubbles. Any bubble not reached by the flood fill is detached and
-  /// falls.
+  /// **Invariant:** A bubble is attached iff it is reachable (via same-color
+  /// connectivity) from the topmost row that *still has bubbles*.
+  ///
+  /// This is not the same as "connected to row 0" — after a match clears
+  /// the upper rows, the effective wall is the new topmost row. Flood-filling
+  /// from that row correctly identifies all attached bubbles. Any bubble
+  /// not reached is detached and removed.
+  ///
+  /// Examples:
+  /// ```
+  /// Row 0: R G B R B    ← topmost row with bubbles
+  /// Row 1: . . . . .    ← empty
+  /// Row 2: R R . . .    ← two reds, disconnected from row 0
+  /// ```
+  /// After popping row 0, the two reds at row 2 fall because no same-color
+  /// path connects them to row 0 (or any row above).
+  ///
+  /// Complexity: O(n) where n = number of bubbles (each bubble visited at
+  /// most once during flood fill, plus one pass to remove detached ones).
   int _dropDetached(Map<String, Bubble> bubbles) {
     if (bubbles.isEmpty) return 0;
 
