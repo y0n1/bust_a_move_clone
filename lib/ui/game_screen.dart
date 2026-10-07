@@ -49,6 +49,12 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   double _offsetX = 0;
   double _offsetY = 0;
 
+  /// Ticker time when the "BIG POP!" banner started (null = not active).
+  Duration? _bigPopAt;
+
+  /// Milliseconds since the banner started; passed to the painter.
+  int? _bigPopElapsedMs;
+
   @override
   void initState() {
     super.initState();
@@ -66,9 +72,20 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   void _onTick(Duration elapsed) {
     // 60 fps tick: the engine advances the projectile by one step per tick.
+    final prev = _state;
     if (_state.projectile != null && _state.status == GameStatus.playing) {
       _state = _engine.tick(_state);
     }
+    // A settle just happened (projectile was in flight, now none) with a
+    // 5+ pop: trigger the BIG POP banner.
+    if (prev.projectile != null &&
+        _state.projectile == null &&
+        _state.poppedThisShot >= 5) {
+      _bigPopAt = elapsed;
+    }
+    final bigPopAt = _bigPopAt;
+    _bigPopElapsedMs =
+        bigPopAt == null ? null : (elapsed - bigPopAt).inMilliseconds;
     if (!mounted) return;
     setState(() {});
   }
@@ -167,6 +184,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         bubbleSize: _bubbleSize,
                         offsetX: _offsetX,
                         offsetY: _offsetY,
+                        bigPopElapsedMs: _bigPopElapsedMs,
                       ),
                       child: const SizedBox.expand(),
                     ),
@@ -197,6 +215,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       }
       _aimAngle = 0;
       _hasPointer = false;
+      _bigPopAt = null;
+      _bigPopElapsedMs = null;
     });
   }
 }
@@ -211,6 +231,7 @@ class _GamePainter extends CustomPainter {
     required this.bubbleSize,
     required this.offsetX,
     required this.offsetY,
+    this.bigPopElapsedMs,
   });
 
   final GameState state;
@@ -220,6 +241,9 @@ class _GamePainter extends CustomPainter {
   final double bubbleSize;
   final double offsetX;
   final double offsetY;
+
+  /// Milliseconds since the "BIG POP!" banner was triggered (null = none).
+  final int? bigPopElapsedMs;
 
   static const Map<BubbleColor, Color> _colors = {
     BubbleColor.red: Color(0xFFE53935),
@@ -291,6 +315,72 @@ class _GamePainter extends CustomPainter {
       ..color = const Color(0x33FF5252)
       ..strokeWidth = 1;
     canvas.drawLine(Offset(0, deathY), Offset(size.width, deathY), line);
+
+    // Level progress bar: how close the board is to being cleared.
+    final total = state.initialBubbleCount;
+    if (total > 0) {
+      final progress =
+          ((total - state.bubbles.length) / total).clamp(0.0, 1.0);
+      const barH = 4.0;
+      final barW = size.width * 0.8;
+      final barX = (size.width - barW) / 2;
+      final barY = size.height - 10;
+      final track = Paint()..color = const Color(0x33FFFFFF);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(barX, barY, barW, barH), const Radius.circular(2)),
+        track,
+      );
+      if (progress > 0) {
+        final fill = Paint()..color = const Color(0xCC66BB6A);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(barX, barY, barW * progress, barH),
+              const Radius.circular(2)),
+          fill,
+        );
+      }
+    }
+
+    // "BIG POP!" banner: slides in from the top (300 ms), holds (400 ms),
+    // fades out (500 ms).
+    if (bigPopElapsedMs != null) {
+      const slideIn = 300.0;
+      const hold = 400.0;
+      const fade = 500.0;
+      final t = bigPopElapsedMs!.toDouble();
+      if (t < slideIn + hold + fade) {
+        final bannerH = 40.0;
+        final targetY = size.height * 0.18;
+        double y;
+        double alpha;
+        if (t < slideIn) {
+          final k = t / slideIn;
+          final eased = 1 - (1 - k) * (1 - k); // ease-out
+          y = -bannerH + (targetY + bannerH) * eased;
+          alpha = 1.0;
+        } else if (t < slideIn + hold) {
+          y = targetY;
+          alpha = 1.0;
+        } else {
+          y = targetY;
+          alpha = 1.0 - (t - slideIn - hold) / fade;
+        }
+        final tp = TextPainter(
+          text: TextSpan(
+            text: 'BIG POP!',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFFFFD54F)
+                  .withAlpha((alpha * 255).round()),
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset((size.width - tp.width) / 2, y));
+      }
+    }
   }
 
   void _drawBubble(Canvas canvas, Offset center, double radius, Color color) {
@@ -334,7 +424,7 @@ class _GamePainter extends CustomPainter {
   bool shouldRepaint(_GamePainter old) =>
       old.state != state || old.aimAngle != aimAngle ||
       old.bubbleSize != bubbleSize || old.offsetX != offsetX || old.offsetY != offsetY ||
-      old.hasPointer != hasPointer;
+      old.hasPointer != hasPointer || old.bigPopElapsedMs != bigPopElapsedMs;
 }
 
 /// The top-of-screen HUD: score, lives, level, and the next-colors queue.
@@ -362,12 +452,27 @@ class _Hud extends StatelessWidget {
         child: Row(
             children: [
               Expanded(
-                child: Text(
-                  'SCORE ${state.score}',
-                  style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SCORE ${state.score}',
+                      style: const TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    // Combo streak: visible while 2+ consecutive pops.
+                    if (state.combo >= 2)
+                      Text(
+                        'COMBO ×${state.combo}',
+                        style: const TextStyle(
+                            color: Color(0xFFFFB300),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold),
+                      ),
+                  ],
                 ),
               ),
               Text(

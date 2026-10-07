@@ -264,4 +264,86 @@ void main() {
       expect(s3.bubbleRow, 1, reason: 'second shot should descend');
     });
   });
+
+  group('combo scoring', () {
+    /// Board where a projectile settling at (0,3) pops exactly 3 reds:
+    /// row 0 = [green, red, red, _, blue], rows 1-3 empty.
+    GameState board({required int combo, int score = 0}) => GameState(
+          bubbles: {
+            '0:0': Bubble(color: BubbleColor.green, row: 0, col: 0),
+            '0:1': Bubble(color: BubbleColor.red, row: 0, col: 1),
+            '0:2': Bubble(color: BubbleColor.red, row: 0, col: 2),
+            '0:4': Bubble(color: BubbleColor.blue, row: 0, col: 4),
+          },
+          projectile: null,
+          nextColors: const [
+            BubbleColor.red,
+            BubbleColor.green,
+            BubbleColor.blue
+          ],
+          score: score,
+          lives: 3,
+          level: 1,
+          bubbleRow: 0,
+          status: GameStatus.playing,
+          poppedThisShot: 0,
+          combo: combo,
+          initialBubbleCount: 4,
+        );
+
+    /// Place a [color] projectile just below (0,3) moving upward so it
+    /// snaps into (0,3), then advance the engine until it settles.
+    GameState settleAt03(Engine e, GameState s, BubbleColor color) {
+      final (tx, ty) = e.centerOf(0, 3);
+      final p = Projectile(
+        color: color,
+        x: tx,
+        y: ty + 0.51,
+        vx: 0,
+        vy: -0.265,
+      );
+      var s2 = s.copyWith(projectile: p);
+      var ticks = 0;
+      while (s2.projectile != null &&
+          s2.status == GameStatus.playing &&
+          ticks < 500) {
+        s2 = e.tick(s2);
+        ticks++;
+      }
+      return s2;
+    }
+
+    test('three consecutive 3-pops score 300 + 600 + 900 = 1800', () {
+      final e = _engine(cols: 5, rows: 4);
+
+      var s = settleAt03(e, board(combo: 0), BubbleColor.red);
+      expect(s.combo, 1);
+      expect(s.score, 300);
+
+      s = settleAt03(e, board(combo: s.combo, score: s.score),
+          BubbleColor.red);
+      expect(s.combo, 2);
+      expect(s.score, 900);
+
+      s = settleAt03(e, board(combo: s.combo, score: s.score),
+          BubbleColor.red);
+      expect(s.combo, 3);
+      expect(s.score, 1800);
+    });
+
+    test('a shot that pops nothing resets the combo', () {
+      final e = _engine(cols: 5, rows: 4);
+      // Green settles at (0,3) with no green neighbors: no match.
+      final s = settleAt03(e, board(combo: 3), BubbleColor.green);
+      expect(s.combo, 0);
+      expect(s.score, 0);
+    });
+
+    test('startLevel reports combo 0 and the initial bubble count', () {
+      final e = _engine();
+      final s = e.startLevel();
+      expect(s.combo, 0);
+      expect(s.initialBubbleCount, s.bubbles.length);
+    });
+  });
 }

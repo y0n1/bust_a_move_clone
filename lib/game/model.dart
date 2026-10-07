@@ -82,6 +82,8 @@ class GameState {
     required this.bubbleRow,
     required this.status,
     required this.poppedThisShot,
+    required this.combo,
+    required this.initialBubbleCount,
   });
 
   /// Bubbles currently attached to the board, indexed by [Bubble.key].
@@ -105,6 +107,15 @@ class GameState {
   /// Number of bubbles popped in the current shot chain (for scoring / FX).
   final int poppedThisShot;
 
+  /// Consecutive shots that popped 3+ bubbles. 0 = no active combo.
+  /// The pop score is multiplied by this value (after increment) on each
+  /// successful shot; a shot that pops fewer than 3 resets it to 0.
+  final int combo;
+
+  /// How many bubbles were on the board when the level (re)started.
+  /// Used by the UI to render the level-clear progress bar.
+  final int initialBubbleCount;
+
   /// Return a copy of this state with the given fields replaced.
   GameState copyWith({
     Map<String, Bubble>? bubbles,
@@ -116,6 +127,8 @@ class GameState {
     int? bubbleRow,
     GameStatus? status,
     int? poppedThisShot,
+    int? combo,
+    int? initialBubbleCount,
   }) {
     return GameState(
       bubbles: bubbles ?? this.bubbles,
@@ -127,6 +140,8 @@ class GameState {
       bubbleRow: bubbleRow ?? this.bubbleRow,
       status: status ?? this.status,
       poppedThisShot: poppedThisShot ?? this.poppedThisShot,
+      combo: combo ?? this.combo,
+      initialBubbleCount: initialBubbleCount ?? this.initialBubbleCount,
     );
   }
 }
