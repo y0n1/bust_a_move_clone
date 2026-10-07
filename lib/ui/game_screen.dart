@@ -207,8 +207,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         _state = _engine.startLevel(level: _state.level + 1);
       } else if (_state.status == GameStatus.lost && _state.lives > 0) {
         // Player lost a life and the wall reached the cannon.
-        // Reset the board with remaining lives.
-        _state = _engine.startLevel(initialLives: _state.lives - 1);
+        // Reset the board with remaining lives, staying on the level.
+        // (Unreachable today — the engine already resets the board on a
+        // life loss — but must stay correct if that changes.)
+        _state = _engine.startLevel(
+            initialLives: _state.lives - 1, level: _state.level);
       } else {
         // Full restart (won and no lives, or lives == 0).
         _state = _engine.startLevel();
