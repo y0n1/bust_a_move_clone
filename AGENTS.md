@@ -1,8 +1,8 @@
 # AGENTS.md — Bust-A-Move Clone
 
-**Model Workspace Protocol (ICM) Layer 0 · Global Identity**
 
-This file is the entry point for any AI agent working in this workspace. It answers "Where am I?" and "Where do I go?" Agent: read this file first, then navigate to the relevant sub-file for your current task.
+This file is the entry point for any AI agent working in this workspace. It answers "Where am I?" and "Where do I go?"  
+Read this file first, then navigate to the relevant sub-file depending your current task.
 
 ---
 
