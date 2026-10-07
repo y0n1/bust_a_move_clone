@@ -24,6 +24,56 @@ const double minBubbleSize = 32;
 /// Maximum bubble size in pixels (prevents excessive scaling on large screens).
 const double maxBubbleSize = 120;
 
+// ── Juice effect data ──────────────────────────────────────────────────
+
+/// A floating score popup that rises and fades.
+class _ScorePopup {
+  const _ScorePopup({
+    required this.text,
+    required this.x,
+    required this.y,
+    required this.createdAt,
+  });
+
+  final String text;
+  final double x; // board-space
+  final double y; // board-space
+  final Duration createdAt;
+}
+
+/// A single particle in a burst.
+class _Particle {
+  _Particle({
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.color,
+    required this.createdAt,
+  });
+
+  double x, y;
+  final double vx, vy;
+  final Color color;
+  final Duration createdAt;
+}
+
+/// A burst of particles at a location.
+class _ParticleBurst {
+  _ParticleBurst({
+    required this.x,
+    required this.y,
+    required this.color,
+    required this.particles,
+    required this.createdAt,
+  });
+
+  final double x, y;
+  final Color color;
+  final List<_Particle> particles;
+  final Duration createdAt;
+}
+
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key, required this.engine});
 
@@ -44,6 +94,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   /// Has a pointer ever been received? (Avoids aim at (0,0) on first frame.)
   bool _hasPointer = false;
 
+  /// Lightweight RNG for juice-effect randomness (independent of engine RNG).
+  final math.Random _rng = math.Random();
+
+  math.Random get rng => _rng;
+
   /// Layout state: bubble size in pixels and offset to center the board.
   double _bubbleSize = 0;
   double _offsetX = 0;
@@ -54,6 +109,25 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   /// Milliseconds since the banner started; passed to the painter.
   int? _bigPopElapsedMs;
+
+  // ── Juice effects ──────────────────────────────────────────────────────
+  /// Active score popups: (text, board-space centroid, time of creation).
+  final List<_ScorePopup> _popups = [];
+
+  /// Active particle bursts: (center, color, particles).
+  final List<_ParticleBurst> _bursts = [];
+
+  /// Screen-shake elapsed ms (null = none active).
+  int? _shakeElapsedMs;
+
+  /// Projectile trail positions (board-space), oldest first.
+  final List<Offset> _trail = [];
+
+  /// Cannon recoil elapsed ms (null = none active).
+  int? _recoilElapsedMs;
+
+  /// Global effect timer (ms since last level start/restart).
+  int _fxElapsedMs = 0;
 
   @override
   void initState() {
@@ -76,16 +150,112 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     if (_state.projectile != null && _state.status == GameStatus.playing) {
       _state = _engine.tick(_state);
     }
-    // A settle just happened (projectile was in flight, now none) with a
-    // 5+ pop: trigger the BIG POP banner.
-    if (prev.projectile != null &&
-        _state.projectile == null &&
-        _state.poppedThisShot >= 5) {
+
+    // Detect a settle: projectile was in flight, now settled.
+    final settled = prev.projectile != null && _state.projectile == null;
+
+    // BIG POP banner (5+ pops).
+    if (settled && _state.poppedThisShot >= 5) {
       _bigPopAt = elapsed;
     }
+
+    // ── Juice effects on settle ──────────────────────────────────────
+    if (settled && _state.poppedThisShot > 0) {
+      final popped = _state.poppedThisShot;
+
+      // Approximate centroid from the projectile's last known position.
+      final proj = prev.projectile!;
+      final cx = proj.x;
+      final cy = proj.y;
+
+      // Score popup.
+      final scoreText = '+${_state.score > 0 ? _state.score : 0}';
+      _popups.add(_ScorePopup(
+        text: scoreText,
+        x: cx,
+        y: cy,
+        createdAt: elapsed,
+      ));
+
+      // Particle burst.
+      final palette = <Color>[
+        const Color(0xFFE53935),
+        const Color(0xFF43A047),
+        const Color(0xFF1E88E5),
+        const Color(0xFFFDD835),
+        const Color(0xFF8E24AA),
+        const Color(0xFFFB8C00),
+      ];
+      final color = palette[_state.nextColors.first.index % palette.length];
+      final particles = <_Particle>[];
+      for (var i = 0; i < 8; i++) {
+        final angle = (i / 8) * math.pi * 2 + (_rng.nextDouble() - 0.5) * 0.5;
+        final speed = 0.02 + rng.nextDouble() * 0.03;
+        particles.add(_Particle(
+          x: cx,
+          y: cy,
+          vx: math.cos(angle) * speed,
+          vy: math.sin(angle) * speed,
+          color: color,
+          createdAt: elapsed,
+        ));
+      }
+      _bursts.add(_ParticleBurst(
+        x: cx,
+        y: cy,
+        color: color,
+        particles: particles,
+        createdAt: elapsed,
+      ));
+
+      // Screen shake on 4+ pops.
+      if (popped >= 4) {
+        _shakeElapsedMs = 0;
+      }
+
+      // Cannon recoil on any pop.
+      if (popped >= 1) {
+        _recoilElapsedMs = 0;
+      }
+    }
+
+    // ── Update trail positions ───────────────────────────────────────
+    if (_state.projectile != null) {
+      final proj = _state.projectile!;
+      _trail.add(Offset(proj.x, proj.y));
+      while (_trail.length > 3) {
+        _trail.removeAt(0);
+      }
+    } else {
+      _trail.clear();
+    }
+
+    // ── Advance effect timers ────────────────────────────────────────
     final bigPopAt = _bigPopAt;
     _bigPopElapsedMs =
         bigPopAt == null ? null : (elapsed - bigPopAt).inMilliseconds;
+
+    // Global FX timer increments each tick.
+    _fxElapsedMs += elapsed.inMilliseconds;
+
+    // Clean up expired popups (> 500ms).
+    _popups.removeWhere((p) => (elapsed - p.createdAt).inMilliseconds > 500);
+
+    // Clean up expired bursts (> 400ms).
+    _bursts.removeWhere((b) => (elapsed - b.createdAt).inMilliseconds > 400);
+
+    // Advance shake timer.
+    if (_shakeElapsedMs != null) {
+      _shakeElapsedMs = (_shakeElapsedMs!) + 16; // ~60fps tick
+      if (_shakeElapsedMs! > 200) _shakeElapsedMs = null;
+    }
+
+    // Advance recoil timer.
+    if (_recoilElapsedMs != null) {
+      _recoilElapsedMs = (_recoilElapsedMs!) + 16;
+      if (_recoilElapsedMs! > 100) _recoilElapsedMs = null;
+    }
+
     if (!mounted) return;
     setState(() {});
   }
@@ -185,6 +355,12 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         offsetX: _offsetX,
                         offsetY: _offsetY,
                         bigPopElapsedMs: _bigPopElapsedMs,
+                        popups: _popups,
+                        bursts: _bursts,
+                        shakeElapsedMs: _shakeElapsedMs,
+                        trail: _trail,
+                        recoilElapsedMs: _recoilElapsedMs,
+                        fxElapsedMs: _fxElapsedMs,
                       ),
                       child: const SizedBox.expand(),
                     ),
@@ -220,6 +396,12 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _hasPointer = false;
       _bigPopAt = null;
       _bigPopElapsedMs = null;
+      _popups.clear();
+      _bursts.clear();
+      _shakeElapsedMs = null;
+      _trail.clear();
+      _recoilElapsedMs = null;
+      _fxElapsedMs = 0;
     });
   }
 }
@@ -235,6 +417,12 @@ class _GamePainter extends CustomPainter {
     required this.offsetX,
     required this.offsetY,
     this.bigPopElapsedMs,
+    this.popups = const [],
+    this.bursts = const [],
+    this.shakeElapsedMs,
+    this.trail = const [],
+    this.recoilElapsedMs,
+    this.fxElapsedMs = 0,
   });
 
   final GameState state;
@@ -247,6 +435,24 @@ class _GamePainter extends CustomPainter {
 
   /// Milliseconds since the "BIG POP!" banner was triggered (null = none).
   final int? bigPopElapsedMs;
+
+  /// Active score popups.
+  final List<_ScorePopup> popups;
+
+  /// Active particle bursts.
+  final List<_ParticleBurst> bursts;
+
+  /// Screen-shake elapsed ms (null = none active).
+  final int? shakeElapsedMs;
+
+  /// Projectile trail positions (board-space), oldest first.
+  final List<Offset> trail;
+
+  /// Cannon recoil elapsed ms (null = none active).
+  final int? recoilElapsedMs;
+
+  /// Global FX timer in ms.
+  final int fxElapsedMs;
 
   static const Map<BubbleColor, Color> _colors = {
     BubbleColor.red: Color(0xFFE53935),
@@ -262,6 +468,20 @@ class _GamePainter extends CustomPainter {
     // Background.
     final bg = Paint()..color = const Color(0xFF0B1E3A);
     canvas.drawRect(Offset.zero & size, bg);
+
+    // Screen shake offset.
+    double shakeDx = 0, shakeDy = 0;
+    if (shakeElapsedMs != null && shakeElapsedMs! < 200) {
+      final t = shakeElapsedMs!.toDouble();
+      // Pseudo-random jitter: use sine waves with different frequencies.
+      shakeDx = math.sin(t * 0.5) * 2.0;
+      shakeDy = math.cos(t * 0.7) * 2.0;
+      canvas.save();
+      canvas.translate(shakeDx, shakeDy);
+    }
+
+    // Current time for effect animations.
+    final elapsed = Duration(milliseconds: fxElapsedMs);
 
     Offset boardToScreen(double x, double y) =>
         Offset(x * bubbleSize + offsetX, y * bubbleSize + offsetY);
@@ -308,9 +528,28 @@ class _GamePainter extends CustomPainter {
       _drawBubble(canvas, c, bubbleSize * 0.48, _colors[proj.color]!);
     }
 
-    // Cannon.
+    // Cannon (with recoil offset).
     final cannon = boardToScreen(engine.cannonX, engine.cannonY);
-    _drawCannon(canvas, cannon, bubbleSize * 0.55, aimAngle);
+    double recoilOffset = 0;
+    if (recoilElapsedMs != null && recoilElapsedMs! < 100) {
+      // Recoil: kick back along the aim axis, then return.
+      recoilOffset = math.cos(recoilElapsedMs!.toDouble() / 100 * math.pi) * 2.0;
+    }
+    _drawCannon(canvas, Offset(cannon.dx, cannon.dy), bubbleSize * 0.55, aimAngle, recoilOffset: recoilOffset);
+
+    // Projectile trail: 3 ghost positions at decreasing opacity.
+    for (var i = 0; i < trail.length; i++) {
+      final pos = trail[i];
+      final alpha = ((i + 1) / trail.length * 0.5 * 255).round().clamp(0, 255);
+      final ghostPaint = Paint()
+        ..color = const Color(0xFFFFFFFF).withAlpha(alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
+      canvas.drawCircle(
+        boardToScreen(pos.dx, pos.dy),
+        bubbleSize * 0.35,
+        ghostPaint,
+      );
+    }
 
     // Death line (subtle).
     final deathY = boardToScreen(0, engine.rows.toDouble()).dy;
@@ -345,8 +584,51 @@ class _GamePainter extends CustomPainter {
       }
     }
 
+    // Particle bursts: each particle moves outward and fades over 400ms.
+    for (final burst in bursts) {
+      final age = (elapsed - burst.createdAt).inMilliseconds;
+      if (age > 400) continue;
+      final progress = age / 400.0;
+      final alpha = ((1 - progress) * 255).round().clamp(0, 255);
+      for (final p in burst.particles) {
+        // Update position.
+        p.x += p.vx;
+        p.y += p.vy;
+        final px = boardToScreen(p.x, p.y);
+        final particlePaint = Paint()
+          ..color = p.color.withAlpha(alpha)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
+        canvas.drawCircle(px, bubbleSize * 0.15, particlePaint);
+      }
+    }
+
+    // Score popups: rise 30px and fade over 500ms.
+    for (final popup in popups) {
+      final age = (elapsed - popup.createdAt).inMilliseconds;
+      if (age > 500) continue;
+      final progress = age / 500.0;
+      final alpha = ((1 - progress) * 255).round().clamp(0, 255);
+      final rise = 30 * progress;
+      final popupPos = boardToScreen(popup.x, popup.y - rise / bubbleSize);
+      final tp = TextPainter(
+        text: TextSpan(
+          text: popup.text,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFFFFD54F).withAlpha(alpha),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(popupPos.dx - tp.width / 2, popupPos.dy - tp.height / 2));
+    }
+
     // "BIG POP!" banner: slides in from the top (300 ms), holds (400 ms),
     // fades out (500 ms).
+    if (shakeElapsedMs != null && shakeElapsedMs! < 200) {
+      canvas.restore();
+    }
     if (bigPopElapsedMs != null) {
       const slideIn = 300.0;
       const hold = 400.0;
@@ -406,11 +688,14 @@ class _GamePainter extends CustomPainter {
     canvas.drawCircle(center, radius - 0.5, rim);
   }
 
-  void _drawCannon(Canvas canvas, Offset center, double size, double angle) {
+  void _drawCannon(Canvas canvas, Offset center, double size, double angle,
+      {double recoilOffset = 0}) {
     // Barrel: a rotated rectangle pointing in the aim direction.
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(-angle);
+    // Apply recoil offset along the barrel axis (negative y in local space).
+    canvas.translate(0, recoilOffset);
     final barrel = Paint()..color = const Color(0xFFB0BEC5);
     final r = Rect.fromCenter(center: Offset(0, -size * 0.5),
         width: size * 0.5, height: size);
@@ -427,7 +712,10 @@ class _GamePainter extends CustomPainter {
   bool shouldRepaint(_GamePainter old) =>
       old.state != state || old.aimAngle != aimAngle ||
       old.bubbleSize != bubbleSize || old.offsetX != offsetX || old.offsetY != offsetY ||
-      old.hasPointer != hasPointer || old.bigPopElapsedMs != bigPopElapsedMs;
+      old.hasPointer != hasPointer || old.bigPopElapsedMs != bigPopElapsedMs ||
+      old.popups != popups || old.bursts != bursts ||
+      old.shakeElapsedMs != shakeElapsedMs || old.trail != trail ||
+      old.recoilElapsedMs != recoilElapsedMs || old.fxElapsedMs != fxElapsedMs;
 }
 
 /// The top-of-screen HUD: score, lives, level, and the next-colors queue.
