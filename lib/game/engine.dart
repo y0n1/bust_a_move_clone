@@ -19,10 +19,18 @@ import 'dart:math' as math;
 
 import 'model.dart';
 
-/// Number of extra rows below the board used for BFS slack in
-/// [_snapToHex] and [_matchGroupAt]. Descent bubbles occupy row
-/// [rows] before the loss condition triggers, so the search must
-/// extend at least one row past the board boundary.
+/// Extra rows below the board used for BFS slack in [_snapToHex] and
+/// [_matchGroupAt].
+///
+/// When the wall descends, bubbles occupy row `rows` (one past the last
+/// board row) before the loss condition triggers. Both the match-group
+/// BFS and the snap-to-hex brute-force loop must search past the board
+/// boundary to handle these descent rows correctly.
+///
+/// 8 is a safety margin: the largest board has 9 rows, so `rows + 8`
+/// covers any board up to 17 rows deep. It is large enough that no
+/// valid bubble position is ever missed, but small enough that the
+/// O(n) snap loop stays fast (max ~170 cells).
 const int descentSlack = 8;
 
 /// Configuration for a single level in the progression.
