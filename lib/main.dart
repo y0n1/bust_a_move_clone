@@ -5,7 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'game/engine.dart';
-import 'ui/game_screen.dart';
+import 'gameplay/ui/game_screen.dart';
 
 void main() {
   runApp(const MyApp());
