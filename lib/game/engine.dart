@@ -303,9 +303,18 @@ class Engine {
     const steps = 8;
     for (var i = 0; i < steps; i++) {
       proj.advance(projectileSpeed / steps);
-      if (proj.y <= 0 || proj.x < 0 || proj.x > cols) {
-        // Off the top or side: the shot is wasted; the bubble flies off screen.
+      if (proj.y <= 0) {
+        // Off the top: the shot is wasted.
         return s.copyWith(projectile: null, nextColors: _refill(s.nextColors));
+      }
+      if (proj.x < 0) {
+        // Left wall bounce.
+        proj.x = 0;
+        proj.vx = -proj.vx;
+      } else if (proj.x > cols) {
+        // Right wall bounce.
+        proj.x = cols.toDouble();
+        proj.vx = -proj.vx;
       }
       if (_hitsBubbleOrWall(proj, s)) {
         next = _settleShot(s, proj);
