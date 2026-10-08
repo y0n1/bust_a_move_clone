@@ -45,6 +45,7 @@ Read the section that matches your task. Each links to the authoritative source.
 | Game engine | `lib/game/engine.dart` | Hex-grid, board gen, aiming, shooting, collision, match-3 pop, chain reactions, detached-cluster drop, wall descent, scoring, win/lose |
 | UI | `lib/ui/game_screen.dart` | `CustomPainter` canvas, pointer input, 60 Hz ticker, HUD |
 | Tests | `test/engine_test.dart`, `test/descent_test.dart` | Headless engine tests (no Flutter) |
+| **Architecture plan** | `docs/architecture-plan.md` | MVVM, layered logic, feature folders, migration strategy |
 
 ### C. Board Geometry (Engine Cheat-Sheet)
 
@@ -74,7 +75,11 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 | Path | Purpose |
 |------|---------|
 | `docs/bust_a_move_spec.md` | Original game design specification (immutable source) |
+<<<<<<< HEAD
 | `docs/architecture.md` | App architecture: MVVM, layered logic, feature folders |
+=======
+| `docs/architecture-plan.md` | App architecture: MVVM, layered logic, feature folders |
+>>>>>>> a1d5a81 (docs: consolidate project board reference for agent discoverability [skip ci])
 | `AGENTS.md` (this file) | Schema — the contract for how agents operate here |
 | `memories/` | Persistent notes (see below) |
 
@@ -104,6 +109,7 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 | Levels | Single level |
 | Assets | Not yet added |
 | Sound | Not yet added |
+| Architecture plan | Created — `docs/architecture-plan.md` (MVVM, feature folders, migration strategy) |
 
 ---
 
