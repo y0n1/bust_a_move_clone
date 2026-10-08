@@ -3,7 +3,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'start_screen/start_screen.dart';
+import 'game/engine.dart';
+import 'gameplay/ui/game_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -21,7 +22,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE53935)),
         useMaterial3: true,
       ),
-      home: const StartScreen(),
+      home: const GameScreen(),
     );
   }
 }
