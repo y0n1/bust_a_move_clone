@@ -34,3 +34,14 @@ Every feature/fix must include a handoff section before committing, with:
 3. **Expected results** — what the tester should see if the fix is correct.
 
 Present this section, wait for approval, then commit.
+
+---
+
+## Project Board Reference
+
+Full project board documentation is in [`docs/project-board.md`](../../docs/project-board.md). It consolidates:
+- Board layout (columns and meanings)
+- Task requirements (priority, branch, assignee)
+- Workflow rules for agents
+- Branch naming conventions
+- Useful `gh` and `git worktree` commands
