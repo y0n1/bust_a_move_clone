@@ -75,11 +75,7 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 | Path | Purpose |
 |------|---------|
 | `docs/bust_a_move_spec.md` | Original game design specification (immutable source) |
-<<<<<<< HEAD
-| `docs/architecture.md` | App architecture: MVVM, layered logic, feature folders |
-=======
 | `docs/architecture-plan.md` | App architecture: MVVM, layered logic, feature folders |
->>>>>>> a1d5a81 (docs: consolidate project board reference for agent discoverability [skip ci])
 | `AGENTS.md` (this file) | Schema — the contract for how agents operate here |
 | `memories/` | Persistent notes (see below) |
 
