@@ -790,18 +790,42 @@ class _Hud extends StatelessWidget {
                     fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 8),
-              ...state.nextColors.map((c) {
-                return Container(
-                  width: 18,
-                  height: 18,
-                  margin: const EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _colors[c],
-                    border: Border.all(color: Colors.white24, width: 1),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // First color (about to fire): large + highlighted.
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _colors[state.nextColors[0]],
+                      border: Border.all(
+                          color: const Color(0xFFFDD835), width: 2.5),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: Color(0xFFFFFFFF),
+                    ),
                   ),
-                );
-              }),
+                  const SizedBox(height: 4),
+                  // Remaining queue: small circles.
+                  ...state.nextColors.skip(1).map((c) {
+                    return Container(
+                      width: 18,
+                      height: 18,
+                      margin: const EdgeInsets.only(bottom: 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _colors[c],
+                        border:
+                            Border.all(color: Colors.white24, width: 1),
+                      ),
+                    );
+                  }),
+                ],
+              ),
               IconButton(
                 onPressed: onRestart,
                 icon: const Icon(Icons.refresh,
