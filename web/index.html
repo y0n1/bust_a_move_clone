@@ -16,8 +16,37 @@
   <title>bust_a_move_clone</title>
   <link rel="manifest" href="manifest.json"/>
   <link rel="shortcut icon" href="favicon.png"/>
+
+  <!-- Loading overlay: visible while Flutter bootstraps -->
+  <style>
+    body { margin: 0; }
+    #loading-overlay {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #0B1E3A;
+      z-index: 9999;
+      transition: opacity 0.3s ease;
+    }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #FDD835;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
+  <div id="loading-overlay"><div class="spinner"></div></div>
+  <script>
+    window.addEventListener('flutter-first-frame', () => {
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.classList.add('hidden');
+      setTimeout(() => { if (overlay) overlay.remove(); }, 350);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
