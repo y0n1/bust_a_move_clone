@@ -140,10 +140,12 @@ read, so the two jobs cannot drift onto different toolchains.
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
 | `docs/ops/deployment.md` | The **Toolchain baseline** row in §1, **and** the illustrative `checkout`/`fvm use` commands in step 3 below |
 | `README.md` | The version in the prerequisites block (prose only) |
-| `memories/repo/facts.md` | The toolchain line — a derived note, not a source of truth, but it goes stale silently if skipped |
+| `memories/repo/facts.md` | The parenthetical under **Gaps** that states the pin — a derived note, not a source of truth, but it goes stale silently if skipped |
 
 Historical mentions (the §11 gap row, the §12 change log, dated quality and
-status reports) record what was true when written and are **not** updated.
+status reports) record what was true when written and are **not** updated;
+illustrative examples elsewhere (the `channel: beta` example in the Rules
+below, issue templates, dated session notes) are examples, not assertions.
 
 ### Procedure
 
