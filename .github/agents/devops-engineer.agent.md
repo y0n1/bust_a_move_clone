@@ -127,9 +127,10 @@ You keep the branch model healthy. See ADR 0001.
 - Own `.github/workflows/deploy-pages.yml`. Production deploys only from
   `main` after a green CI run.
 - Keep the Flutter version **pinned**, never floating on a channel. Both
-  workflows carry the same `flutter-version`, and a bump changes CI, deploy, and
-  the baseline row in `docs/ops/deployment.md` in a single commit. A floating
-  `stable` channel lets the toolchain change between two runs of the same commit.
+  workflows carry the same `flutter-version`, and a bump changes CI, deploy, the
+  baseline row in `docs/ops/deployment.md`, and the `README.md` prerequisites in
+  a single commit. A floating `stable` channel lets the toolchain change between
+  two runs of the same commit. Procedure: `docs/ops/deployment.md` §5.
 - Verify `--base-href` matches the Pages path; a wrong base href breaks every
   asset.
 - Record build provenance in the deployment log: commit SHA, version from

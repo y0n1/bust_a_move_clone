@@ -109,7 +109,7 @@ whatever is current at run time, so the toolchain could change between two runs
 of the same commit. The pin makes a green build mean the same thing tomorrow as
 it did today.
 
-The pin lives in **three** places that enforce it. Change all of them in one
+The pin lives in **three** places that must agree. Change all of them in one
 commit:
 
 | File | What to change |
@@ -118,8 +118,9 @@ commit:
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
 | `docs/ops/deployment.md` | The **Toolchain baseline** row in §1 |
 
-A fourth place *describes* the toolchain to humans: the prerequisites block in
-`README.md`. It carries no pin, but the prose should not contradict one.
+`README.md` carries the version too, in prose. It enforces nothing, but a
+README that advertises a different version than CI runs is a trap, so it moves
+with the rest.
 
 ### Procedure
 
@@ -127,14 +128,24 @@ A fourth place *describes* the toolchain to humans: the prerequisites block in
    [Flutter release notes](https://docs.flutter.dev/release/release-notes).
    `flutter --version` reports what is installed *locally*, which is not
    evidence that a different version is available.
-2. Update the version in both workflow files and the baseline row.
+2. Update the version in both workflow files, the baseline row, and the
+   `README.md` prerequisites.
 3. Switch your **local** SDK to the target version, then run the full gate on it.
-   `flutter upgrade` is not the tool for this — it moves you to whatever stable
-   is *newest*, which is usually not the version you are pinning to. Use
-   `flutter downgrade <version>` or your version manager:
+   Neither `flutter upgrade` nor `flutter downgrade` can target a version —
+   `upgrade` moves to newest stable, and `downgrade` only undoes the last
+   `upgrade`. Use the
+   [documented switch](https://docs.flutter.dev/install/upgrade#switch-to-a-specific-flutter-version)
+   — check out the tag in the SDK clone — or a version manager:
 
    ```bash
-   flutter downgrade 3.47.1                # or: fvm use 3.47.1
+   # Option A: check out the tag in your Flutter SDK clone
+   cd "$(dirname "$(dirname "$(which flutter)")")"
+   git fetch --tags && git checkout 3.47.1
+
+   # Option B: a version manager (FVM), then use `fvm flutter` for every step
+   fvm use 3.47.1
+
+   # Then run the gate — with `fvm flutter` instead of `flutter` under Option B
    flutter --version                       # confirm the switch took effect
    flutter pub get
    flutter analyze --fatal-infos
@@ -142,13 +153,18 @@ A fourth place *describes* the toolchain to humans: the prerequisites block in
    flutter build web --release --base-href /bust_a_move_clone/
    ```
 
+   Option B only changes what `fvm flutter` resolves to. Bare `flutter` still
+   runs the SDK on your `PATH`, so either use `fvm flutter` throughout or make
+   sure the FVM SDK is the one on `PATH` — otherwise you are gating a different
+   toolchain than CI, which is the whole thing this section exists to prevent.
+
 4. Commit as `ci(deps): bump Flutter to <version>` — a `ci`/`deps` scope, so it
    does not bump the release version on its own.
 5. Let CI run. A green `analyze-test` **and** a green deploy prove the new pin.
    Two runs are needed to demonstrate cache reuse: the first populates the cache
    for the new version, the second hits it.
-6. If the deploy fails, revert the three files together — never leave CI and the
-   deploy workflow on different versions.
+6. If the deploy fails, revert the four files together — never leave CI, the
+   deploy workflow, the runbook, and the README disagreeing about the toolchain.
 
 ### Rules
 
