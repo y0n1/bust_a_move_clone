@@ -138,13 +138,29 @@ def fetch_until(url: str, accept, wait_s: float, what: str):
     observed state, which is what an operator needs to see: a 404 that never
     became a 200 is a missing file, a 200 whose body never changed is a stale
     deployment, and the message distinguishes them.
+
+    A connection error is retried rather than raised. Mid-deploy, a Pages edge
+    can reset or refuse a connection for a few seconds; treating that as a
+    terminal failure would flake the release exactly when the check matters.
     """
     deadline = time.monotonic() + wait_s
     attempt = 0
-    last = None
+    last_error: str | None = None
     while True:
         attempt += 1
-        last = http_get(url)
+        try:
+            last = http_get(url)
+        except CheckFailure as error:
+            # Transient: remember it and keep trying inside the same budget.
+            last_error = str(error)
+            if time.monotonic() >= deadline:
+                raise CheckFailure(
+                    f"{what} was unreachable after {attempt} attempts over "
+                    f"{wait_s:.0f}s (last: {last_error})"
+                ) from error
+            time.sleep(min(2.0 * attempt, 15.0))
+            continue
+        last_error = None
         if accept(*last):
             return last
         if time.monotonic() >= deadline:
@@ -319,6 +335,13 @@ def run(args: argparse.Namespace) -> int:
     # -- 2. version.json ---------------------------------------------------
     result = Result(2, "version.json matches the released version")
     try:
+        if not expected:
+            # Without a version to compare against this check cannot fail, and
+            # a check that cannot fail is not a gate. Refuse rather than pass.
+            raise CheckFailure(
+                "no expected version: pass --expect-version or run from a "
+                "checkout whose pubspec.yaml declares one"
+            )
         status, body, _ = fetch_until(
             base + "version.json",
             lambda s, b, h: s == 200 and b.strip().startswith(b"{"),
@@ -326,15 +349,12 @@ def run(args: argparse.Namespace) -> int:
         )
         version, build = parse_version_json(body)
         observed["version"] = f"{version}+{build}" if build else version
-        if expected and version != expected:
+        if version != expected:
             raise CheckFailure(
                 f"version.json reports {version!r} but the release is "
                 f"{expected!r} — the deploy served a stale or wrong artifact"
             )
-        result.passed(
-            f"HTTP {status}, version {version!r}, build {build!r}"
-            + ("" if expected else " (no expected version to compare)")
-        )
+        result.passed(f"HTTP {status}, version {version!r}, build {build!r}")
     except SmokeFailure as error:
         result.failed(str(error))
     results.append(result)
