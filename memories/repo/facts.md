@@ -73,7 +73,9 @@ docs/
 - **Branching:** Gitflow + Conventional Commits — see `docs/decisions/0001-gitflow-and-conventional-commits.md`.
   Task branches cut from `develop`, PRs target `develop`; only `release/*` and
   `hotfix/*` target `main`. CI (`.github/workflows/ci.yml`, job `analyze-test`)
-  runs on PRs into `main`/`develop` and on pushes to `develop` and `main`.
+  runs on PRs into `main`/`develop` and on pushes to `develop` **only** — there
+  is no push-to-`main` CI run; the `main` push runs the deploy workflow, which
+  builds but does not test.
 - **Validation surface:** QE validates **on `main`** (or on a `release/*` branch for
   release-time defects) — see `docs/decisions/0002-validate-on-main.md`. Never on
   `develop`, never on a `feat/*`/`fix/*` branch. Consequences: a task stays **In

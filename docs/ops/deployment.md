@@ -128,11 +128,14 @@ A fourth place *describes* the toolchain to humans: the prerequisites block in
    `flutter --version` reports what is installed *locally*, which is not
    evidence that a different version is available.
 2. Update the version in both workflow files and the baseline row.
-3. Upgrade locally, then run the full gate on the new toolchain:
+3. Switch your **local** SDK to the target version, then run the full gate on it.
+   `flutter upgrade` is not the tool for this — it moves you to whatever stable
+   is *newest*, which is usually not the version you are pinning to. Use
+   `flutter downgrade <version>` or your version manager:
 
    ```bash
-   flutter upgrade                        # or switch to the target version
-   flutter --version                      # confirm the bump took effect
+   flutter downgrade 3.47.1                # or: fvm use 3.47.1
+   flutter --version                       # confirm the switch took effect
    flutter pub get
    flutter analyze --fatal-infos
    flutter test test/
@@ -156,9 +159,8 @@ A fourth place *describes* the toolchain to humans: the prerequisites block in
   just as surely as adding `channel: stable` does. Never do either.
 - **Never pin a version that has not passed the full gate.** The pin is a
   contract, not a suggestion.
-- Keep `cache: true`. The cache key includes the pinned version and the framework
-  revision, so a bump invalidates it automatically and no manual cache clearing
-  is needed.
+- Keep `cache: true`. The cache key includes the pinned version, so a bump
+  invalidates it automatically and no manual cache clearing is needed.
 
 ---
 

@@ -8,12 +8,13 @@ pop, clear the board before the wall descends to the cannon line.
 
 Prerequisites:
 
-- [Flutter](https://docs.flutter.dev/get-started/install) — CI and the deploy
-  workflow are pinned to **3.47.1**; any recent stable works locally, but match
-  the pin if you want a green local build to mean what a green CI build means.
-  See [`docs/ops/deployment.md` §5](docs/ops/deployment.md) for the bump
-  procedure. Dart ≥ 3.13.1 and the **Web** platform enabled
-  (`flutter doctor` should show `Chrome` as a web target).
+- [Flutter](https://docs.flutter.dev/get-started/install) with Dart ≥ 3.13.1 and
+  the **Web** platform enabled (`flutter doctor` should show `Chrome` as a web
+  target).
+- CI and the deploy workflow are pinned to Flutter **3.47.1**. Any recent stable
+  runs the app locally, but matching the pin is what makes a green local build
+  mean the same thing as a green CI build. See
+  [`docs/ops/deployment.md` §5](docs/ops/deployment.md) for the bump procedure.
 
 ```bash
 # 1. Install dependencies
