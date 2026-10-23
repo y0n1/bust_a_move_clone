@@ -41,6 +41,42 @@
             "initialResponseTimeoutMs": 600000,
             "autoContinueRetries": 1,
             "modelModes": {}
+        },
+        {
+            "vllmModelId": "rits/deepseek-ai/DeepSeek-V4.1-Flash-1017",
+            "displayName": "DeepSeek V4.1 Flash",
+            "family": "deepseek_v41",
+            "maxOutputTokens": [
+                32768,
+                131072,
+                65536,
+                16384
+            ],
+            "capabilities": {
+                "toolCalling": true,
+                "imageInput": true
+            },
+            "modelModes": {
+                "Think (Max)": {
+                    "reasoning_effort": "max",
+                    "temperature": 1,
+                    "top_p": 0.95
+                },
+                "Think (High)": {
+                    "reasoning_effort": "xhigh",
+                    "temperature": 1,
+                    "top_p": 0.95
+                },
+                "No Think": {
+                    "reasoning_effort": "none",
+                    "temperature": 1,
+                    "top_p": 1
+                }
+            },
+            "defaultMode": "Think (High)",
+            "id": "rits/deepseek-ai/DeepSeek-V4.1-Flash-1017 on enmaas",
+            "server": "enmaas",
+            "contextWindow": 262144
         }
     ],
 }
