@@ -128,12 +128,12 @@ flowchart TD
     L --> I
     K -- disputes settled --> M[Implementor merges<br/>task STAYS In review]
     M --> N[PM cuts release/x.y.z<br/>version + changelog]
-    N --> O[PR release to main<br/>+ tag vX.Y.Z]
+    N --> O[PR release/* to main]
     O --> P[DevOps deploy<br/>GitHub Pages]
     P --> Q{QE E2E validation<br/>on main, against rubric}
     Q -- fail --> R[Evidence in the ticket<br/>task to Ready<br/>PM schedules dev ASAP]
     R --> G
-    Q -- pass --> S[Task Done<br/>DevOps deletes the branch]
+    Q -- pass --> S[PM tags vX.Y.Z<br/>task Done<br/>DevOps deletes the branch]
     S --> T{Production<br/>verified?}
     T -- no --> U[Rollback<br/>+ incident]
     T -- yes --> V[Deployment log<br/>+ back-merge to develop]
@@ -440,13 +440,17 @@ subject under 72 characters, body explains **why**.
 
 ### Release checklist
 
+> Order matters: the merge, the deploy, and the QE verdict come **before** the tag.
+> The PM tags only after QE reports **PASS** on `main`.
+
 - [ ] All release-scope tasks are QE-validated **on `main`** (or on the `release/*` branch for release-time fixes).
 - [ ] CI green on `develop` and on the `release/*` PR.
-- [ ] QE release report is **PASS** (or CONDITIONAL accepted in writing by the user).
-- [ ] No open must-fix defect for this version; the PM's release-impact call is recorded.
 - [ ] `CHANGELOG.md` updated; version in `pubspec.yaml` matches the commit history.
-- [ ] `release/*` PR merged into `main`; tag `vX.Y.Z` on the merge commit; GitHub Release published.
-- [ ] DevOps deploy workflow green; deployed commit matches the tag.
+- [ ] No open must-fix defect for this version; the PM's release-impact call is recorded.
+- [ ] `release/*` PR merged into `main`.
+- [ ] DevOps deploy workflow green; deployed commit matches the release commit.
+- [ ] QE release report is **PASS** (or CONDITIONAL accepted in writing by the user).
+- [ ] **Only now:** tag `vX.Y.Z` on the merge commit; GitHub Release published.
 - [ ] Production smoke test passed (start → aim → fire → match → retry).
 - [ ] Performance and accessibility budgets met.
 - [ ] Rollback path verified; previous tag/artifact still available.
