@@ -1,6 +1,8 @@
 /// The root widget: start screen → game.
 library;
 
+import 'dart:ffi' show DynamicLibrary;
+
 import 'package:flutter/material.dart';
 
 import 'start_screen/start_screen.dart';
@@ -26,7 +28,5 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
-
-// ignore: unused_import
-import 'dart:io';
+/// TEMPORARY: proves the web build catches what analyze and tests do not.
+String debugPlatform() => DynamicLibrary.process().toString();
