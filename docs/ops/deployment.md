@@ -351,7 +351,7 @@ These are **proposals for user triage**, not Ready tasks.
 | OPS-7 | No Dependabot/dependency review | Supply-chain risk | `ci/dependency-review` |
 | OPS-8 | Branch protection not documented | `main` can be pushed directly | `docs/branch-protection` |
 | OPS-9 | No CI timeouts/concurrency | Stuck runs waste minutes | `ci/timeouts` |
-| OPS-10 | `v1.0.0` tag missing | Release is not traceable to a tag | `chore/tag-v1.0.0` |
+| ~~OPS-10~~ | ~~`v1.0.0` tag missing~~ — **closed**: `v1.0.0` tags the deployed commit `6c21684` and the GitHub Release is published | Release is not traceable to a tag | `chore/tag-v1.0.0` |
 | OPS-11 | No PR preview deploys | Reviewers cannot click the change | `ci/pr-preview` |
 | OPS-12 | Service-worker update path unverified | Players may see stale builds | `ci/sw-update-verification` |
 
