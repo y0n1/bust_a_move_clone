@@ -107,11 +107,13 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 | Aspect | Status |
 |--------|--------|
 | Engine core | Complete — match-3, chain reactions, cluster drop, wall descent |
+| Architecture | Complete — MVVM, feature folders, ViewModels own state (PR #62) |
 | UI | Functional — CustomPainter, pointer input, HUD |
-| Tests | Partial — engine_test.dart covers core logic; descent_test.dart added |
+| Tests | 45 passing — engine, descent, start screen, ViewModel units |
 | Levels | Single level |
 | Assets | Not yet added |
 | Sound | Not yet added |
+| Board | All tasks Done — no Ready work queued |
 
 ---
 
@@ -119,6 +121,7 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 
 - Do **not** add Flutter imports to `lib/game/`.
 - Do **not** mutate `GameState` in place — always return a new instance.
-- Do **not** add state management (Riverpod, Provider) until the app has more than one screen.
+- Do **not** call `Engine` from a View — go through the ViewModel.
+- Do **not** add Riverpod / Provider — plain `ChangeNotifier` until DI becomes painful.
 - Do **not** use non-deterministic randomness in the engine.
 - Do **not** skip reading `/memories/` at session start.
