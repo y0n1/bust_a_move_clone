@@ -99,6 +99,9 @@ build's wall-clock once instead of adding it to every PR.
 4. `flutter build web --release --base-href /bust_a_move_clone/`.
 5. Upload `build/web` as the Pages artifact.
 6. Deploy with `actions/deploy-pages@v4`.
+7. **Verify the live site** — the `smoke` job runs
+   `test/quality/post_deploy_check.py` against the production URL and fails the
+   workflow if it is unhealthy (§6.1).
 
 Only one deployment runs at a time. In-flight production deploys are never
 cancelled.
@@ -222,16 +225,61 @@ below, issue templates, dated session notes) are examples, not assertions.
 Run after **every** production deploy. Record evidence in
 [`deployment-log.md`](deployment-log.md).
 
+### 6.1 Automated — the `smoke` job
+
+The `smoke` job in [`.github/workflows/deploy-pages.yml`](../../.github/workflows/deploy-pages.yml)
+runs `test/quality/post_deploy_check.py` as soon as `deploy` succeeds, against
+the **live URL**. It fails the workflow if the site is not healthy, and uploads
+`console.log` as a `post-deploy-diagnostics` artifact on failure.
+
+| # | Check | What it proves |
+|---|-------|----------------|
+| 1 | Site root answers `200` with an HTML content type | Pages is serving the app, not an error page |
+| 2 | `version.json` answers `200` and its `version` matches `pubspec.yaml` | The deploy served the artifact we built, not a stale one |
+| 3 | `manifest.json` answers `200`; **every icon it declares** plus `favicon.png` answer `200` with a real PNG signature and their declared dimensions | The asset class a console check cannot see (see below) |
+| 4 | Headless Chrome boots Flutter, the semantics tree appears, the start screen offers **PLAY**, and no blocking console errors are logged | A player can actually reach the game |
+
+Network checks retry with backoff for `--wait` seconds (default 180) instead of
+sleeping a fixed interval, so a cold Pages edge does not flake a release.
+
+**Why check 3 exists.** Browser-level manifest and image fetches are *not*
+delivered to the page's CDP console session, so a site serving 404 icons logs
+nothing. That blindness is exactly how **#95** shipped base64 icons and a
+phantom manifest icon to production while the smoke suite reported 10/10. The
+post-deploy check fetches those assets over HTTP so it can see them.
+
+**What it cannot see.** Gameplay. It deliberately stops at the start screen; the
+§9 critical journey stays with `test/quality/release_smoke.py`, which builds and
+drives the artifact locally. That remains the release gate for behaviour.
+
+Run it by hand against any URL:
+
+```bash
+python3 test/quality/post_deploy_check.py --headed
+python3 test/quality/post_deploy_check.py --url http://127.0.0.1:8080/bust_a_move_clone/
+```
+
+On success it prints a ready-to-paste row for
+[`deployment-log.md`](deployment-log.md). The row is emitted **only** after a
+passing run, so a log entry cannot claim results that were never measured.
+
+Exit codes: `0` all checks passed, `1` a named check failed, `2` the tool could
+not run (no Chrome, bad arguments).
+
+### 6.2 Manual — what the automated check does not cover
+
 - [ ] Deploy workflow conclusion is `success`.
-- [ ] `curl -I https://y0n1.github.io/bust_a_move_clone/` returns `200`.
-- [ ] `version.json` matches the released version and build number.
-- [ ] The app reaches the start screen with no blocking console errors.
-- [ ] No failed asset requests in the browser network panel.
 - [ ] Smoke path passes: PLAY → aim → fire → match-3 pop → next shot.
 - [ ] Wall bounce, life loss, level transition, and restart still work.
 - [ ] Service worker updates to the new build without a stale-cache trap.
 - [ ] Load time and transfer size are within budget.
 - [ ] Rollback path is still valid.
+
+> **Known red window.** Until the `#95` icon fix reaches production (first
+> release after PR #97), check 3 fails on the live site by design — production
+> `6c21684` really does serve base64 icons. The failure message names it
+> explicitly (`base64 text, not a PNG (this is the #95 defect)`). A red `smoke`
+> job in that window is a true report, not a broken pipeline.
 
 ### Verified baseline — 2026-10-23
 
@@ -345,7 +393,7 @@ These are **proposals for user triage**, not Ready tasks.
 | ~~OPS-1~~ | ~~Flutter version floats on `stable`~~ — **closed**: pinned to 3.47.1 (§5) | Builds could have drifted without a code change | `ci/pin-flutter-version` |
 | OPS-2 | No `workflow_dispatch` for redeploy | Rollback requires a revert PR | `ci/manual-redeploy` |
 | ~~OPS-3~~ | ~~PR CI does not build the web release~~ — **closed**: `build-web` job in `ci.yml` (§3) | Web compile/base-href errors reached `main` | `ci/build-web-on-pr` |
-| OPS-4 | No automated post-deploy smoke test | Verification is manual and easy to skip | `ci/post-deploy-smoke` |
+| ~~OPS-4~~ | ~~No automated post-deploy smoke test~~ — **closed**: `smoke` job in `deploy-pages.yml` runs `test/quality/post_deploy_check.py` against the live URL after every deploy (§6.1) | Verification was manual and easy to skip | `ci/post-deploy-smoke` |
 | OPS-5 | No uptime monitoring | Outages are discovered by players | `ci/uptime-check` |
 | OPS-6 | No Lighthouse/performance gate | Size and load regressions are invisible | `ci/lighthouse-budget` |
 | OPS-7 | No Dependabot/dependency review | Supply-chain risk | `ci/dependency-review` |
@@ -364,3 +412,4 @@ These are **proposals for user triage**, not Ready tasks.
 | 2026-10-23 | Initial runbook and production baseline recorded | DevOps Engineer |
 | 2026-10-23 | Toolchain pinned to Flutter 3.47.1 in both workflows; bump procedure added (§5) | DevOps Engineer |
 | 2026-10-23 | PR gate builds the production web bundle in parallel with analyze-test; bundle size (on-disk + gzip) reported to the job summary (§3) | DevOps Engineer |
+| 2026-10-23 | Automated post-deploy verification: `smoke` job + `test/quality/post_deploy_check.py` assert live HTTP 200, released version, real PNG icons, reachable start screen and a clean console (§6.1). Closes OPS-4 | DevOps Engineer |
