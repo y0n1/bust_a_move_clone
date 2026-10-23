@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../game/model.dart';
+import '../../../game/model.dart';
 
 class ScoreDisplay extends StatelessWidget {
   const ScoreDisplay({

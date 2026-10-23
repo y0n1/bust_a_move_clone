@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../game/model.dart';
+import '../../../game/model.dart';
 
 class LevelDisplay extends StatelessWidget {
   const LevelDisplay({

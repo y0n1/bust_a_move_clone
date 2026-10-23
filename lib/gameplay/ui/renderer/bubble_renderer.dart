@@ -7,16 +7,15 @@ library;
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 
-import '../../game/engine.dart';
-import '../../game/model.dart';
+import '../../../game/engine.dart';
+import '../../../game/model.dart';
 
 // ── Juice effect data ──────────────────────────────────────────────────
 
 /// A floating score popup that rises and fades.
-class _ScorePopup {
-  const _ScorePopup({
+class ScorePopup {
+  const ScorePopup({
     required this.text,
     required this.x,
     required this.y,
@@ -30,8 +29,8 @@ class _ScorePopup {
 }
 
 /// A single particle in a burst.
-class _Particle {
-  _Particle({
+class Particle {
+  Particle({
     required this.x,
     required this.y,
     required this.vx,
@@ -47,8 +46,8 @@ class _Particle {
 }
 
 /// A burst of particles at a location.
-class _ParticleBurst {
-  _ParticleBurst({
+class ParticleBurst {
+  ParticleBurst({
     required this.x,
     required this.y,
     required this.color,
@@ -58,7 +57,7 @@ class _ParticleBurst {
 
   final double x, y;
   final Color color;
-  final List<_Particle> particles;
+  final List<Particle> particles;
   final Duration createdAt;
 }
 
@@ -93,10 +92,10 @@ class GamePainter extends CustomPainter {
   final int? bigPopElapsedMs;
 
   /// Active score popups.
-  final List<_ScorePopup> popups;
+  final List<ScorePopup> popups;
 
   /// Active particle bursts.
-  final List<_ParticleBurst> bursts;
+  final List<ParticleBurst> bursts;
 
   /// Screen-shake elapsed ms (null = none active).
   final int? shakeElapsedMs;

@@ -1,14 +1,15 @@
 /// Start screen — entry point for the game.
 library;
 
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-import '../game/engine.dart';
 import '../gameplay/ui/game_screen.dart';
+import 'viewmodel/start_screen_viewmodel.dart';
 
 class StartScreen extends StatelessWidget {
-  const StartScreen({super.key});
+  const StartScreen({super.key, this.viewModel});
+
+  final StartViewModel? viewModel;
 
   @override
   Widget build(BuildContext context) {
@@ -41,13 +42,10 @@ class StartScreen extends StatelessWidget {
                       horizontal: 32, vertical: 20),
                 ),
                 onPressed: () {
-                  final engine = Engine.forLevel(
-                    1,
-                    rng: math.Random(),
-                  );
+                  final vm = viewModel ?? StartViewModel();
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
-                        builder: (_) => GameScreen(engine: engine)),
+                        builder: (_) => GameScreen(viewModel: vm.createGame())),
                   );
                 },
                 child: const Text(
