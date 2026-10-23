@@ -24,6 +24,21 @@
 | YYYY-MM-DD HH:MM | X.Y.Z+N | `abc1234` | [run-id](url) | ✅/❌ | ✅/❌ + evidence | Name | Notes |
 ```
 
+### Generating the verification column
+
+Since OPS-4, the `smoke` job in `deploy-pages.yml` runs
+`test/quality/post_deploy_check.py` against the live URL on every deploy. On a
+passing run the script prints a ready-to-paste row built from the evidence it
+already measured:
+
+```bash
+python3 test/quality/post_deploy_check.py
+```
+
+The row is emitted only after every check passes — it cannot be produced from a
+run that failed or did not happen. The run id, commit and deploy conclusion still
+come from the workflow run; copy them from the job summary.
+
 ## Verification evidence to capture
 
 - Deploy workflow conclusion and run URL.
