@@ -46,7 +46,7 @@ the built artifact**, not just the development build.
 |-------|-------|----------|---------|------|
 | **Unit** | Engine rules, model invariants, ViewModel transitions | `test/engine_test.dart`, `test/descent_test.dart`, `test/gameplay/viewmodel/`, `test/start_screen/viewmodel/` | `flutter test test/` | Every PR |
 | **Widget** | HUD, overlays, critical interactions | `test/gameplay/ui/` | `flutter test test/` | Every PR |
-| **Integration / E2E** | Critical player journey on a built artifact | `test/quality/` (to be created) | `flutter test test/quality/` or Playwright | Release candidate |
+| **Integration / E2E** | Critical player journey on a built artifact | `test/quality/release_smoke.py` | `python3 test/quality/release_smoke.py` | Release candidate |
 | **Manual exploratory** | Feel, clarity, delight, edge cases | Charter-based sessions | — | Release candidate |
 | **Production smoke** | Deployed URL, assets, console, service worker | Live URL | Browser + `curl` | Every deploy |
 
@@ -87,6 +87,11 @@ python3 -m http.server 8400 --directory /tmp/bam-preview
 
 Serve the artifact under a `bust_a_move_clone/` directory so the Pages base
 href resolves; serving `build/web` at the root causes blank-page 404s.
+
+`test/quality/release_smoke.py` does exactly this, then drives the result in
+headless Chrome. It needs no Flutter VM service, no `chromedriver`, and no
+Python packages beyond the standard library — it talks CDP over a WebSocket it
+vendors itself. Add `--no-build` to re-use an existing `build/web`.
 
 ## 7. Browser and device matrix
 
@@ -136,6 +141,10 @@ The critical journey must pass on every release candidate:
 8. Restart resets the session cleanly.
 9. HUD shows score and level correctly.
 10. No blocking console errors.
+
+This suite is automated: `python3 test/quality/release_smoke.py` runs all ten
+steps against a freshly built artifact and exits non-zero if any step fails. A
+release candidate is not verified until it passes.
 
 ## 10. Accessibility checklist
 
@@ -213,10 +222,13 @@ evidence.
 | Cross-browser evidence | ❌ none | Not yet tested |
 | Accessibility audit | ❌ none | Not yet performed |
 | Performance trace | ❌ none | Not yet measured |
-| E2E/smoke automation | ❌ none | Manual only |
+| E2E/smoke automation | ✅ automated | `python3 test/quality/release_smoke.py` — 10/10 steps, 11–17 s |
 | Release tag | ❌ missing | No `v1.0.0` tag |
 
 Full report: [`reports/2026-10-23-v1.0.0-baseline.md`](reports/2026-10-23-v1.0.0-baseline.md).
+
+The `E2E/smoke automation` row read ❌ at baseline and was updated the same day
+when QE-1 landed. Every other row is the baseline as measured.
 
 ## 16. Improvement backlog
 
@@ -224,7 +236,7 @@ Proposals for user triage — not Ready tasks.
 
 | ID | Improvement | Why | Suggested branch |
 |----|-------------|-----|------------------|
-| QE-1 | Automate the release smoke path against `build/web` | Manual verification is easy to skip | `test/release-smoke` |
+| QE-1 | ~~Automate the release smoke path against `build/web`~~ — **delivered**, see §4 and §9 | Manual verification is easy to skip | `test/release-smoke` |
 | QE-2 | Add coverage reporting and a threshold | Makes untested rules visible | `test/coverage-report` |
 | QE-3 | Add an accessibility audit (axe + manual) | Color-only cues and focus gaps | `test/a11y-audit` |
 | QE-4 | Add a performance trace + Lighthouse budget | Jank and load regressions are invisible | `test/perf-budget` |

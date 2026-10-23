@@ -46,13 +46,19 @@
       `flutter build web --release --base-href /bust_a_move_clone/`.
 - [ ] CI workflow is green on the candidate commit.
 - [ ] Build artifact size is within budget.
+- [ ] Release smoke suite passes against the built artifact:
+      `python3 test/quality/release_smoke.py` — builds, stages the bundle under
+      the Pages base href, and drives a headless Chrome through the ten
+      critical-path steps. Exits non-zero on failure and writes a screenshot,
+      console log, and trace to `build/smoke-artifacts/<utc>/`.
 
 ## 3. Acceptance and regression (on `main`, after the release merges)
 
 - [ ] Every **acceptance-rubric item** on every release-scope task is mapped to
       evidence, on `main` or on the deployed production build.
 - [ ] Critical-path smoke suite passes (start → aim → fire → match → descend →
-      win/lose → retry).
+      win/lose → retry) — `python3 test/quality/release_smoke.py`, ten steps
+      against a build of the candidate commit.
 - [ ] Wall bounce, life loss, level transition, and restart verified.
 - [ ] No regression in previously shipped behavior.
 - [ ] Edge cases verified: empty/full board, simultaneous win/lose, rapid
