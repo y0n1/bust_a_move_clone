@@ -109,18 +109,15 @@ whatever is current at run time, so the toolchain could change between two runs
 of the same commit. The pin makes a green build mean the same thing tomorrow as
 it did today.
 
-The pin lives in **three** places that must agree. Change all of them in one
-commit:
+The version appears in **four** places that must agree. Change all of them in
+one commit:
 
 | File | What to change |
 |------|----------------|
 | `.github/workflows/ci.yml` | `flutter-version: '<version>'` |
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
 | `docs/ops/deployment.md` | The **Toolchain baseline** row in §1 |
-
-`README.md` carries the version too, in prose. It enforces nothing, but a
-README that advertises a different version than CI runs is a trap, so it moves
-with the rest.
+| `README.md` | The version in the prerequisites block (prose, enforces nothing) |
 
 ### Procedure
 
@@ -138,14 +135,16 @@ with the rest.
    — check out the tag in the SDK clone — or a version manager:
 
    ```bash
-   # Option A: check out the tag in your Flutter SDK clone
-   cd "$(dirname "$(dirname "$(which flutter)")")"
-   git fetch --tags && git checkout 3.47.1
+   # Option A: check out the tag in your Flutter SDK clone.
+   # `git -C` keeps you in the project directory — the gate below must run
+   # against the app, not against the Flutter framework.
+   SDK="$(dirname "$(dirname "$(readlink -f "$(which flutter)")")")"
+   git -C "$SDK" fetch --tags && git -C "$SDK" checkout 3.47.1
 
    # Option B: a version manager (FVM), then use `fvm flutter` for every step
    fvm use 3.47.1
 
-   # Then run the gate — with `fvm flutter` instead of `flutter` under Option B
+   # Then run the gate from the project root — `fvm flutter` under Option B
    flutter --version                       # confirm the switch took effect
    flutter pub get
    flutter analyze --fatal-infos
@@ -171,8 +170,9 @@ with the rest.
 - **Both workflows move together.** CI and production must build with the same
   toolchain, or a green PR can still break the deploy.
 - **`flutter-version` is the pin; `channel:` is not.** `channel` defaults to
-  `stable`, so deleting `flutter-version` silently restores a floating toolchain
-  just as surely as adding `channel: stable` does. Never do either.
+  `stable`, and it is only consulted when `flutter-version` is absent. So
+  *replacing* the pin with a channel floats the toolchain, and so does *deleting*
+  the pin and leaving the default behind. Never do either.
 - **Never pin a version that has not passed the full gate.** The pin is a
   contract, not a suggestion.
 - Keep `cache: true`. The cache key includes the pinned version, so a bump

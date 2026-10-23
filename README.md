@@ -14,7 +14,8 @@ Prerequisites:
 - CI and the deploy workflow are pinned to Flutter **3.47.1**. Any recent stable
   runs the app locally, but matching the pin is what makes a green local build
   mean the same thing as a green CI build. See
-  [`docs/ops/deployment.md` §5](docs/ops/deployment.md) for the bump procedure.
+  [`docs/ops/deployment.md` §5](docs/ops/deployment.md#5-bumping-the-toolchain)
+  for the bump procedure.
 
 ```bash
 # 1. Install dependencies
