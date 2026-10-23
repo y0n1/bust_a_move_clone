@@ -151,7 +151,7 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 | Sound | Not yet added |
 | Quality | Baseline green — 45 tests passing, `flutter analyze --fatal-infos` clean |
 | Production | Live at `https://y0n1.github.io/bust_a_move_clone/`; deploy verified manually |
-| Board | All tasks Done — no Ready work queued |
+| Board | 72 items — 45 Done, 27 Backlog (#64–#90); no Ready work queued. See [`docs/status/2026-10-23-kickoff.md`](docs/status/2026-10-23-kickoff.md) |
 | Team | Defined — 8 agents in `.github/agents/`; discovery and quality kickoff in progress |
 
 ---
