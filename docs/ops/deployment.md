@@ -117,7 +117,7 @@ one commit:
 | `.github/workflows/ci.yml` | `flutter-version: '<version>'` |
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
 | `docs/ops/deployment.md` | The **Toolchain baseline** row in §1 |
-| `README.md` | The version in the prerequisites block (prose, enforces nothing) |
+| `README.md` | The version in the prerequisites block (prose only) |
 
 ### Procedure
 
@@ -138,6 +138,7 @@ one commit:
    # Option A: check out the tag in your Flutter SDK clone.
    # `git -C` keeps you in the project directory — the gate below must run
    # against the app, not against the Flutter framework.
+   # (`readlink -f` is GNU; on macOS use Option B or resolve the path by hand.)
    SDK="$(dirname "$(dirname "$(readlink -f "$(which flutter)")")")"
    git -C "$SDK" fetch --tags && git -C "$SDK" checkout 3.47.1
 
@@ -159,9 +160,11 @@ one commit:
 
 4. Commit as `ci(deps): bump Flutter to <version>` — a `ci`/`deps` scope, so it
    does not bump the release version on its own.
-5. Let CI run. A green `analyze-test` **and** a green deploy prove the new pin.
-   Two runs are needed to demonstrate cache reuse: the first populates the cache
-   for the new version, the second hits it.
+5. Let CI run. A green `analyze-test` proves the pin for the gate; the deploy
+   workflow only fires on a push to `main`, so the production half of the proof
+   lands at the next release, not on the bump PR. Two CI runs are needed to
+   demonstrate cache reuse: the first populates the cache for the new version,
+   the second hits it.
 6. If the deploy fails, revert the four files together — never leave CI, the
    deploy workflow, the runbook, and the README disagreeing about the toolchain.
 
@@ -170,9 +173,12 @@ one commit:
 - **Both workflows move together.** CI and production must build with the same
   toolchain, or a green PR can still break the deploy.
 - **`flutter-version` is the pin; `channel:` is not.** `channel` defaults to
-  `stable`, and it is only consulted when `flutter-version` is absent. So
-  *replacing* the pin with a channel floats the toolchain, and so does *deleting*
-  the pin and leaving the default behind. Never do either.
+  `stable` and filters the release list *before* the version is resolved, so a
+  pinned version must exist on the channel you name — `channel: beta` beside
+  `flutter-version: '3.47.1'` fails with `Unable to determine Flutter version`.
+  Leave `channel` out; the default `stable` is what the pin resolves against.
+  Removing `flutter-version` resolves the newest release on the channel, and
+  that is a floating toolchain. Never do either.
 - **Never pin a version that has not passed the full gate.** The pin is a
   contract, not a suggestion.
 - Keep `cache: true`. The cache key includes the pinned version, so a bump
