@@ -1,6 +1,6 @@
 # Repo facts — Bust-A-Move Clone
 
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-23
 
 ## Build commands
 
@@ -19,17 +19,26 @@
 
 ```
 lib/
-  main.dart            — MaterialApp entry point
+  main.dart            — MaterialApp entry point → StartScreen
   game/
     model.dart         — BubbleColor, Bubble, Projectile, GameState, GameStatus
     engine.dart        — Engine: hex-grid, shooting, collision, match-3, chain reactions, cluster drop, wall descent
-  ui/
-    game_screen.dart   — CustomPainter canvas, pointer input, 60Hz ticker, HUD
+  gameplay/
+    viewmodel/game_viewmodel.dart  — GameViewModel (ChangeNotifier): Engine, GameState, Ticker, aim/fire/restart, juice FX, layout
+    ui/game_screen.dart            — Thin View: listens to ViewModel, pointer input
+    ui/hud/                        — ScoreDisplay, LevelDisplay
+    ui/renderer/bubble_renderer.dart — GamePainter + ScorePopup/Particle/ParticleBurst
+  start_screen/
+    start_screen.dart              — Title / PLAY / instructions
+    viewmodel/start_screen_viewmodel.dart — createGame() factory
 test/
   engine_test.dart     — Headless engine tests
   descent_test.dart    — Headless engine tests
+  gameplay/viewmodel/game_viewmodel_test.dart
+  start_screen/viewmodel/start_screen_viewmodel_test.dart
 docs/
   bust_a_move_spec.md  — Original game design spec (immutable source)
+  architecture.md      — MVVM architecture reference
 ```
 
 ## Verified practices
@@ -37,6 +46,9 @@ docs/
 - Domain layer (`lib/game/`) is pure Dart — no Flutter imports. Tests run headlessly.
 - Engine returns new `GameState` snapshots per mutation; UI replaces wholesale.
 - `math.Random` seeded for deterministic tests.
+- MVVM: Views never touch `Engine`. ViewModels extend `ChangeNotifier`, own the `Ticker`, and call the engine.
+- A plain (non-widget) class has no `TickerProvider` — construct `Ticker(_onTick)` directly.
+- Folder name is `viewmodel/` (singular, no underscore) in both features.
 - Board geometry: odd rows offset right by half a bubble. Row 0 has `cols` cells; odd rows have `cols - 1`.
 - Cannon at `(cols / 2, rows + 1)` in board-space.
 - `Engine.centerOf(row, col)` returns cell center in board-space.
