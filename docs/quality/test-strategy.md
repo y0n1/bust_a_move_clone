@@ -146,6 +146,22 @@ This suite is automated: `python3 test/quality/release_smoke.py` runs all ten
 steps against a freshly built artifact and exits non-zero if any step fails. A
 release candidate is not verified until it passes.
 
+**Scope of the automation.** The script drives the real built artifact in
+headless Chrome and asserts on the HUD text the app publishes through Flutter
+web semantics. That is enough for the journey, the state transitions and the
+console, but not for everything the ten items name:
+
+| Item | Automated to the level of |
+|------|---------------------------|
+| 2–3 | Behaviour — the shot leaves the cannon and a miss costs nothing. Guide motion and bounce angles are not asserted. |
+| 5 | A chain reaction, proven from the `COMBO ×N` HUD text. The detached-cluster **drop** half has no observable surface and is covered by engine unit tests instead. |
+| 6 | A bubble reaches the cannon line and costs a life. The exact row is an engine unit test. |
+| 7 | A life loss costs exactly one life and keeps the level. Level **progression** on a clear is covered by engine and ViewModel tests. |
+
+It also verifies a **local** reproduction of the Pages artifact, not the
+deployed URL. Post-deploy verification against production is §7 and the
+[deployment runbook](../ops/deployment.md).
+
 ## 10. Accessibility checklist
 
 - [ ] Text contrast ≥ 4.5:1; UI contrast ≥ 3:1.
@@ -222,13 +238,18 @@ evidence.
 | Cross-browser evidence | ❌ none | Not yet tested |
 | Accessibility audit | ❌ none | Not yet performed |
 | Performance trace | ❌ none | Not yet measured |
-| E2E/smoke automation | ✅ automated | `python3 test/quality/release_smoke.py` — 10/10 steps, 11–17 s |
+| E2E/smoke automation | ✅ automated | `python3 test/quality/release_smoke.py` — 10/10 steps, 31–69 s with the build (12–49 s with `--no-build`) |
 | Release tag | ❌ missing | No `v1.0.0` tag |
 
 Full report: [`reports/2026-10-23-v1.0.0-baseline.md`](reports/2026-10-23-v1.0.0-baseline.md).
 
 The `E2E/smoke automation` row read ❌ at baseline and was updated the same day
 when QE-1 landed. Every other row is the baseline as measured.
+
+The smoke timing is a range, not a constant: the suite hunts for a match-3 and
+for a chain reaction on an **unseeded** board, so how long it runs depends on
+how quickly the board cooperates. The upper bound covers a run where the first
+chain took 59 shots.
 
 ## 16. Improvement backlog
 

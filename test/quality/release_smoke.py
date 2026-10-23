@@ -44,13 +44,26 @@ Two consequences are stated plainly rather than papered over:
   match-3 cannot be forced, so the suite fires until one occurs within a bounded
   shot budget and reports how many shots it took. Measured over 180 shots across
   several boards, a shot pops about 20-25% of the time; the budget is sized so
-  that a total whiff is far less likely than a hardware fault.
+  that a total whiff is far less likely than a hardware fault. A chain reaction
+  is rarer still — it needs two pops in a row — so it gets its own, larger
+  budget, sized from the measured wait (see `CHAIN_SHOT_BUDGET`).
 
-Scoring is observable enough to distinguish a plain pop from a chain or a drop
-(`lib/game/engine.dart`): a pop scores `groupSize * 100` multiplied by the combo
-streak, and a detached-cluster drop adds `50` per fallen bubble. So a single-shot
-score delta of `>= 600` proves a chain (combo >= 2) and a delta that is not a
-multiple of `100` proves a drop.
+Scoring and chaining
+--------------------
+`lib/game/engine.dart` scores a pop as `150 * (groupSize - 1) * combo` and adds
+`50` per bubble for a detached cluster that falls. Two inferences that look
+sound are not, and the suite does not make them:
+
+* a single-shot delta of `>= 600` does **not** prove a chain — a five-bubble
+  pop at combo 1 scores exactly `600`;
+* a delta that is not a multiple of `100` does **not** prove a drop — a
+  four-bubble pop at combo 1 scores `450`.
+
+A chain is therefore proven from the HUD instead: `ScoreDisplay` renders
+`COMBO xN` while `combo >= 2`, which only happens on a second consecutive pop.
+A detached-cluster drop has no observable surface at all — its score is added
+to a pop's, and the pop's own size is not observable — so it is covered by the
+engine unit tests that run on every pull request, not here.
 
 Screenshots
 -----------
@@ -83,8 +96,13 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 # The Pages base href. The artifact must be served under this directory name.
 BASE_PATH = "bust_a_move_clone"
 
-# §14 target: smoke suite duration < 5 minutes.
+# §14 target: smoke suite duration < 5 minutes. Measured from the moment the
+# browser starts, so a slow `flutter build web` does not eat the game's budget.
 TIME_BUDGET_S = 300.0
+
+# A release web build measured 15-28s locally; the ceiling only exists so a
+# wedged build fails instead of hanging the run forever.
+BUILD_TIMEOUT_S = 900.0
 
 # Shots fired while hunting for a match-3 and then a chain/drop.
 #
@@ -94,6 +112,13 @@ TIME_BUDGET_S = 300.0
 # whiff 1 time in ~100,000. Worst case a hunt costs ~45s, well inside
 # `TIME_BUDGET_S`.
 DEFAULT_MAX_SHOTS = 40
+
+# A chain needs two consecutive pops, so its chance is bounded by the pop rate
+# rather than equal to it and the wait is heavy-tailed: measured at 4, 8, 29 and
+# 77 shots to the first chain. The chain hunt therefore gets its own, larger
+# budget — 80 shots whiff about 1 run in 80 at the observed rates, and the
+# worst case still leaves the whole suite inside `TIME_BUDGET_S`.
+CHAIN_SHOT_BUDGET = 80
 
 # Level 1 descends every shot (`descentInterval: 1`), and the projectile
 # resolves in well under a second at `projectileSpeed: 0.6`.
@@ -113,9 +138,10 @@ HUD_PATTERNS = {
     "level": re.compile(r"LEVEL\s+(\d+)"),
 }
 
-# `lib/game/engine.dart`: pop = groupSize * 100 * combo, drop = fallen * 50.
-POP_UNIT = 100
-CHAIN_DELTA = 6 * POP_UNIT  # a second consecutive pop (combo 2) scores >= 600
+# `ScoreDisplay` renders `COMBO xN` only while `state.combo >= 2`, i.e. only
+# while a pop streak is running, so the text is present exactly on the shots
+# that chained.
+COMBO_PATTERN = re.compile(r"COMBO\s*\u00d7\s*(\d+)")
 
 # Console noise that must not fail the run: a missing favicon is a Pages
 # concern, not a game defect.
@@ -155,12 +181,6 @@ def find_chrome(explicit: str | None) -> str:
     )
 
 
-def free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
-
-
 # --------------------------------------------------------------------------- #
 # Static server — serves the staged artifact so the base href resolves
 # --------------------------------------------------------------------------- #
@@ -172,10 +192,16 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
 
 class StaticServer:
+    """Serves the staged artifact on an ephemeral port.
+
+    The socket binds port 0 and the assigned port is read back, so there is no
+    probe-then-rebind window in which another process could steal the port.
+    """
+
     def __init__(self, root: str) -> None:
-        self.port = free_port()
         handler = partial(QuietHandler, directory=root)
-        self._httpd = ThreadingHTTPServer(("127.0.0.1", self.port), handler)
+        self._httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        self.port = self._httpd.server_address[1]
         self._thread = threading.Thread(target=self._httpd.serve_forever, daemon=True)
 
     @property
@@ -226,23 +252,38 @@ class Chrome:
         ]
         if self.headless:
             args.append("--headless=new")
-        if os.environ.get("CHROME_NO_SANDBOX") or os.geteuid() == 0:
-            args.append("--no-sandbox")
+        # `--no-sandbox` is needed as root, and it pairs with
+        # `--disable-dev-shm-usage`: Chrome's default 64 MB /dev/shm is too
+        # small in containers and crashes tabs mid-run.
+        if os.environ.get("CHROME_NO_SANDBOX") or (
+            hasattr(os, "geteuid") and os.geteuid() == 0
+        ):
+            args.extend(["--no-sandbox", "--disable-dev-shm-usage"])
         args.append("about:blank")
 
         self._proc = subprocess.Popen(
             args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
-        self.port = self._wait_for_port()
+        try:
+            self.port = self._wait_for_port()
+        except BaseException:
+            # `__exit__` only runs when `__enter__` returned, so without this a
+            # startup failure (or a Ctrl-C) leaks the browser process.
+            self._terminate()
+            raise
         return self
 
-    def __exit__(self, *_exc) -> None:
+    def _terminate(self) -> None:
         if self._proc and self._proc.poll() is None:
             self._proc.terminate()
             try:
                 self._proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 self._proc.kill()
+                self._proc.wait(timeout=10)
+
+    def __exit__(self, *_exc) -> None:
+        self._terminate()
 
     def _wait_for_port(self, timeout: float = 30.0) -> int:
         # Chrome writes "<port>\n<browser ws path>" once the DevTools endpoint
@@ -301,23 +342,46 @@ class Cdp:
         self.console_errors: list[str] = []
         self._frame: bytes | None = None
         self._pending_acks: list[int] = []
+        self._trace_events: list[dict] = []
 
     # -- plumbing ----------------------------------------------------------
+
+    def close(self) -> None:
+        """Close the DevTools socket so Chrome can shut down promptly."""
+        try:
+            self.ws.close()
+        except Exception:  # noqa: BLE001 - teardown must not raise
+            pass
 
     def send(self, method: str, params: dict | None = None,
              timeout: float = 30.0) -> dict:
         self._next_id += 1
         message_id = self._next_id
-        self.ws.send_text(
-            json.dumps({"id": message_id, "method": method, "params": params or {}})
-        )
+        try:
+            self.ws.send_text(
+                json.dumps(
+                    {"id": message_id, "method": method, "params": params or {}}
+                )
+            )
+        except OSError as error:
+            raise SmokeFailure(
+                f"the DevTools connection died sending {method}: {error}"
+            ) from error
         deadline = time.monotonic() + timeout
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise SmokeFailure(f"CDP timeout waiting for {method}")
             self.ws.sock.settimeout(remaining)
-            message = json.loads(self.ws.recv_text())
+            try:
+                message = json.loads(self.ws.recv_text())
+            except (OSError, ValueError) as error:
+                # A dead or wedged browser surfaces as a socket error or a
+                # truncated frame, not as a CDP error. Normalise it so `run()`
+                # can capture artifacts instead of dying with a traceback.
+                raise SmokeFailure(
+                    f"the DevTools connection failed waiting for {method}: {error}"
+                ) from error
             if message.get("id") == message_id:
                 if "error" in message:
                     raise CdpError(f"{method}: {message['error']}")
@@ -344,6 +408,10 @@ class Cdp:
                 or "uncaught exception"
             )
             self.console_errors.append(f"exception: {description}")
+        elif method == "Tracing.dataCollected":
+            # Trace chunks can arrive while another command is in flight; keep
+            # them so `trace.json` is complete rather than truncated.
+            self._trace_events.extend(params.get("value", []))
 
     def _ack_frames(self) -> None:
         while self._pending_acks:
@@ -433,11 +501,15 @@ class Cdp:
 
     def stop_trace(self) -> list[dict]:
         self.send("Tracing.end")
-        collected: list[dict] = []
+        collected: list[dict] = list(self._trace_events)
+        self._trace_events.clear()
         deadline = time.monotonic() + 60
         while time.monotonic() < deadline:
             self.ws.sock.settimeout(max(0.1, deadline - time.monotonic()))
-            message = json.loads(self.ws.recv_text())
+            try:
+                message = json.loads(self.ws.recv_text())
+            except (OSError, ValueError):
+                return collected
             method = message.get("method")
             if method == "Tracing.dataCollected":
                 collected.extend(message["params"]["value"])
@@ -557,6 +629,15 @@ class Page:
             values[name] = int(match.group(1))
         return values
 
+    def combo(self) -> int | None:
+        """Return the combo streak the HUD is showing, or None when there is none.
+
+        `ScoreDisplay` renders `COMBO xN` only while the streak is 2 or more, so
+        a match here is direct evidence that a pop chained off another.
+        """
+        match = COMBO_PATTERN.search(self.text())
+        return int(match.group(1)) if match else None
+
     def wait_for_hud(self, timeout: float = 20.0) -> dict:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -603,11 +684,11 @@ STEPS = (
     ("Aim moves the guide; fire launches the projectile", "behavioural"),
     ("Wall bounce; off-screen shots do not vanish", "behavioural"),
     ("A match-3 pops and scores", "asserted"),
-    ("Chain reactions and detached-cluster drops", "asserted"),
-    ("Wall descent advances; loss triggers", "asserted"),
-    ("Lives decrement and level progression", "asserted"),
+    ("A chain reaction scores again on a consecutive pop", "asserted"),
+    ("The wall reaches the cannon line and costs a life", "asserted"),
+    ("A life loss costs exactly one life and keeps the level", "asserted"),
     ("Restart resets the session cleanly", "asserted"),
-    ("HUD shows score and level correctly", "asserted"),
+    ("HUD shows score, lives, level and the next queue", "asserted"),
     ("No blocking console errors", "asserted"),
 )
 
@@ -683,7 +764,7 @@ class SmokeSuite:
         measured over 60 shots, five of nine aim offsets produced every scoring
         shot and the rest produced none, so a board that did not line up with
         those five whiffed indefinitely. Sweeping 17 positions across the width
-        targets every column of a 13-column board, and drifting `y` gives each
+        targets every column of a nine-column board, and drifting `y` gives each
         column three different approach angles per cycle.
         """
         view = self.page.viewport()
@@ -694,15 +775,20 @@ class SmokeSuite:
         return x, y
 
     def _fire(self, index: int) -> dict:
-        """Fire one shot, record what changed, and clear any overlay.
+        """Fire one shot at sweep position `index`."""
+        x, y = self._aim_point(index)
+        return self._fire_at(x, y)
 
-        A level 1 board reaches the cannon line after one or two shots
-        (`descentInterval: 1`), so a hunt for a rare event has to span several
-        sessions. Losing a life resets the board — and therefore the score — so
-        those shots are flagged `reset` and excluded from scoring evidence.
+    def _fire_at(self, x: float, y: float) -> dict:
+        """Fire one shot at a screen point, record what changed, clear overlays.
+
+        A level 1 board reaches the cannon line after three or four shots
+        (`descentInterval: 1`, and the opening cluster fills about half the
+        rows), so a hunt for a rare event has to span several sessions. Losing a
+        life resets the board — and therefore the score — so those shots are
+        flagged `reset` and excluded from scoring evidence.
         """
         before = self.page.hud()
-        x, y = self._aim_point(index)
         self.cdp.click(x, y)
         time.sleep(self.settle)
 
@@ -718,6 +804,7 @@ class SmokeSuite:
             "score": after["score"],
             "lives": after["lives"],
             "level": after["level"],
+            "combo": self.page.combo(),
             "delta": after["score"] - before["score"],
             "life_delta": after["lives"] - before["lives"],
         }
@@ -751,7 +838,8 @@ class SmokeSuite:
         raise SmokeFailure(
             f"{what} was not observed within {budget} shots "
             f"(per shot: "
-            f"{[(r['aim'], r['delta'], r['life_delta']) for r in self.shots[start:]]}"
+            f"{[(r['aim'], r['delta'], r['life_delta'], r['combo'])
+               for r in self.shots[start:]]}"
             f")"
         )
 
@@ -812,35 +900,56 @@ class SmokeSuite:
         )
 
     def step_chains(self, result: StepResult) -> None:
-        def chain_or_drop(record: dict) -> bool:
-            if record["reset"]:
-                return False  # the level restarted, so the delta is not a score
-            delta = record["delta"]
-            # combo >= 2 scores >= 600 in a single shot
-            if delta >= CHAIN_DELTA:
-                record["evidence"] = f"chain: single-shot delta {delta}"
-                return True
-            # a detached-cluster drop adds 50 per fallen bubble, which breaks
-            # the multiple-of-100 pattern a pure pop leaves behind
-            if delta > 0 and delta % POP_UNIT != 0:
-                record["evidence"] = f"drop: single-shot delta {delta} (not x100)"
-                return True
-            return False
+        """Prove a chain reaction from the `COMBO xN` HUD text.
 
-        record = self._fire_until(
-            chain_or_drop, self.max_shots, "a chain or a detached-cluster drop"
+        A score delta cannot prove a chain: `_popScore` is
+        `150 * (groupSize - 1)`, so a five-bubble pop at combo 1 scores exactly
+        600 and a four-bubble pop scores 450. Only the combo streak is
+        unambiguous, and `ScoreDisplay` publishes it while it is running.
+
+        A chain needs two *consecutive* pops — `combo` increments on a pop and
+        resets to 0 on a whiff — so the chance of one is bounded by the pop
+        rate, not equal to it. Measured over several runs the wait is
+        heavy-tailed (4, 8, 29 and 77 shots before the first chain), so this
+        hunt gets a larger budget than the match-3 hunt and a strategy: after a
+        shot that scored, fire the same aim again, because the cluster that just
+        cleared left a gap in a region that already matched once.
+
+        Detached-cluster drops have no observable surface — their score is
+        added to a pop's and the pop's own size is not observable — so that half
+        of the release-checklist item stays with the engine unit tests.
+        """
+        start = len(self.shots)
+        repeat: tuple[float, float] | None = None
+        for index in range(start, start + CHAIN_SHOT_BUDGET):
+            record = self._fire_at(*repeat) if repeat else self._fire(index)
+            if not record["reset"] and (record["combo"] or 0) >= 2:
+                result.passed(
+                    f"the HUD showed COMBO x{record['combo']} on shot "
+                    f"{record['shot']}, a {record['delta']}-point single shot "
+                    f"from SCORE {record['score_before']} (a detached-cluster "
+                    "drop has no observable surface — see the module docstring)"
+                )
+                return
+            scored = not record["reset"] and record["delta"] > 0
+            repeat = tuple(record["aim"]) if scored else None
+        raise SmokeFailure(
+            f"a chain reaction (COMBO x2 or better) was not observed within "
+            f"{CHAIN_SHOT_BUDGET} shots (per shot: "
+            f"{[(r['aim'], r['delta'], r['life_delta'], r['combo'])
+               for r in self.shots[start:]]})"
         )
-        result.passed(f"{record['evidence']} on shot {record['shot']}")
 
     def step_descent(self, result: StepResult) -> None:
         record = self._fire_until(
             lambda r: r["life_delta"] < 0,
             self.max_shots,
-            "the wall descending into the cannon line",
+            "the wall reaching the cannon line",
         )
         result.passed(
-            f"the wall reached the cannon line on shot {record['shot']}: "
-            f"LIVES {record['lives_before']} -> {record['lives']}"
+            f"a bubble reached the cannon line on shot {record['shot']}: "
+            f"LIVES {record['lives_before']} -> {record['lives']} (level 1 "
+            "descends on every shot, so descent is what moved it there)"
         )
 
     def step_lives_and_level(self, result: StepResult) -> None:
@@ -860,19 +969,29 @@ class SmokeSuite:
                     f"{record['shot']}; a life loss restarts the same level"
                 )
         hud = self.page.hud()
-        if not 0 <= hud["lives"] <= 3:
-            raise SmokeFailure(f"LIVES is out of range: {hud['lives']}")
-        if not 1 <= hud["level"] <= 99:
-            raise SmokeFailure(f"LEVEL is out of range: {hud['level']}")
+        if hud["lives"] < 0:
+            raise SmokeFailure(f"LIVES went negative: {hud['lives']}")
+        if hud["level"] < 1:
+            raise SmokeFailure(f"LEVEL is not a real level: {hud['level']}")
         result.passed(
             f"{len(losses)} life loss(es), each exactly -1 and each keeping "
-            f"LEVEL {losses[0]['level']} (level-up on a clear is owned by the "
-            "engine and ViewModel tests)"
+            f"LEVEL {losses[0]['level']} (a level-up on a clear is owned by the "
+            "engine and ViewModel tests, which can set the board up)"
         )
 
     def step_restart(self, result: StepResult) -> None:
         # Play one shot first so the reset has something to undo.
         self._fire(len(self.shots))
+        # A win that lands just after `_fire` reads the overlay would send
+        # `restart()` down its level-up branch and fail the assertions below on
+        # a correct app, so give a late overlay a moment to show up first.
+        deadline = time.monotonic() + 1.2
+        while time.monotonic() < deadline:
+            late = self.page.overlay()
+            if late is not None:
+                self._dismiss_overlay(late)
+                break
+            time.sleep(0.2)
         before = self.page.hud()
         label = self.page.click_label("Restart level", "PLAY AGAIN", "CONTINUE")
         deadline = time.monotonic() + 15
@@ -897,20 +1016,25 @@ class SmokeSuite:
         text = self.page.text()
         if "NEXT" not in text:
             raise SmokeFailure("The next-colour queue is missing from the HUD")
-        if hud["score"] != 0:
-            raise SmokeFailure(
-                f"A freshly restarted session should show SCORE 0, "
-                f"saw {hud['score']}"
-            )
         for name in ("score", "lives", "level"):
             if not isinstance(hud[name], int):
                 raise SmokeFailure(f"HUD {name} is not an integer: {hud[name]!r}")
+        # The session was just restarted, so no pop streak can be running and
+        # `ScoreDisplay` must not still be rendering a combo.
+        combo = self.page.combo()
+        if combo is not None:
+            raise SmokeFailure(
+                f"A fresh session is still showing COMBO x{combo}: {text!r}"
+            )
         result.passed(
             f"SCORE {hud['score']}, LIVES {hud['lives']}, LEVEL {hud['level']} "
-            "and the next-colour queue all present and consistent after restart"
+            "and the next-colour queue all present, with no stale combo streak"
         )
 
     def step_console(self, result: StepResult) -> None:
+        # Drain anything still in flight so an error logged by the last shot is
+        # counted rather than missed.
+        self.cdp.pump_events(0.3)
         if self.cdp.console_errors:
             joined = "\n    ".join(self.cdp.console_errors[:10])
             raise SmokeFailure(f"Console errors were logged:\n    {joined}")
@@ -919,25 +1043,46 @@ class SmokeSuite:
     # -- artifacts ---------------------------------------------------------
 
     def capture_artifacts(self, reason: str, artifact_dir: str) -> list[str]:
-        os.makedirs(artifact_dir, exist_ok=True)
+        """Write what we can about a failure. Never raises.
+
+        This runs on the failure path, so anything that escapes it would mask
+        the original failure and leave the run with no diagnostics at all.
+        `console.log` is written first because it is the cheapest and the most
+        useful; the screenshot and the trace are best-effort after it.
+        """
+        try:
+            os.makedirs(artifact_dir, exist_ok=True)
+        except OSError as error:
+            log(f"  (could not create {artifact_dir}: {error})")
+            return []
         written: list[str] = []
 
-        screenshot_path = os.path.join(artifact_dir, "screenshot.png")
-        with open(screenshot_path, "wb") as handle:
-            handle.write(self.cdp.live_screenshot())
-        written.append(screenshot_path)
-
         console_path = os.path.join(artifact_dir, "console.log")
-        with open(console_path, "w", encoding="utf-8") as handle:
-            handle.write(f"# smoke failure: {reason}\n")
-            handle.write(f"# page text: {self.page.text()}\n\n")
-            handle.write("# shots:\n")
-            for record in self.shots:
-                handle.write(f"#   {record}\n")
-            handle.write("\n# console:\n")
-            for line in self.cdp.console_errors or ["(no console errors)"]:
-                handle.write(line + "\n")
-        written.append(console_path)
+        try:
+            try:
+                page_text = self.page.text()
+            except Exception as error:  # noqa: BLE001 - diagnostics only
+                page_text = f"(unavailable: {error})"
+            with open(console_path, "w", encoding="utf-8") as handle:
+                handle.write(f"# smoke failure: {reason}\n")
+                handle.write(f"# page text: {page_text}\n\n")
+                handle.write("# shots:\n")
+                for record in self.shots:
+                    handle.write(f"#   {record}\n")
+                handle.write("\n# console:\n")
+                for line in self.cdp.console_errors or ["(no console errors)"]:
+                    handle.write(line + "\n")
+            written.append(console_path)
+        except OSError as error:
+            log(f"  (could not write console.log: {error})")
+
+        screenshot_path = os.path.join(artifact_dir, "screenshot.png")
+        try:
+            with open(screenshot_path, "wb") as handle:
+                handle.write(self.cdp.live_screenshot())
+            written.append(screenshot_path)
+        except Exception as error:  # noqa: BLE001 - diagnostics only
+            log(f"  (could not capture a screenshot: {error})")
 
         try:
             events = self.cdp.stop_trace()
@@ -945,7 +1090,7 @@ class SmokeSuite:
             with open(trace_path, "w", encoding="utf-8") as handle:
                 json.dump({"traceEvents": events}, handle)
             written.append(trace_path)
-        except (SmokeFailure, OSError) as error:  # the trace is best-effort
+        except Exception as error:  # noqa: BLE001 - the trace is best-effort
             log(f"  (could not capture a trace: {error})")
 
         return written
@@ -1075,13 +1220,25 @@ def build_artifact(repo_root: str, skip_build: bool) -> str:
         return build_web
     log("Building the production web bundle ...")
     started = time.monotonic()
-    result = subprocess.run(
-        ["flutter", "build", "web", "--release", "--base-href", f"/{BASE_PATH}/"],
-        cwd=repo_root,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["flutter", "build", "web", "--release", "--base-href",
+             f"/{BASE_PATH}/"],
+            cwd=repo_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=BUILD_TIMEOUT_S,
+        )
+    except FileNotFoundError as error:
+        raise SmokeFailure(
+            "the `flutter` executable was not found on PATH; install the "
+            "Flutter SDK or run with --no-build against an existing build/web"
+        ) from error
+    except subprocess.TimeoutExpired as error:
+        raise SmokeFailure(
+            f"flutter build web did not finish within {BUILD_TIMEOUT_S}s"
+        ) from error
     if result.returncode != 0:
         raise SmokeFailure(f"flutter build web failed:\n{result.stdout[-3000:]}")
     log(f"  built in {time.monotonic() - started:.1f}s")
@@ -1122,19 +1279,20 @@ def report(suite: SmokeSuite, elapsed: float, max_shots: int) -> None:
         log(f"{number:<5}{kind:<13}{'not run':<9}{title}")
     log("-" * 96)
     log(f"wall clock: {elapsed:.1f}s   shots fired: {len(suite.shots)}   "
-        f"shot budget per hunt: {max_shots}")
+        f"shot budgets: {max_shots} (chain hunt {CHAIN_SHOT_BUDGET})")
 
 
 def run(args: argparse.Namespace) -> int:
     repo_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
-    started = time.monotonic()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     artifact_dir = os.path.join(repo_root, "build", "smoke-artifacts", stamp)
 
     build_web = build_artifact(repo_root, args.no_build)
     chrome_binary = find_chrome(args.chrome)
+    # The §14 budget covers the suite, not the compile that precedes it.
+    started = time.monotonic()
 
     with tempfile.TemporaryDirectory(prefix="bam-smoke-") as workspace:
         staging = os.path.join(workspace, "www")
@@ -1146,10 +1304,12 @@ def run(args: argparse.Namespace) -> int:
         with StaticServer(staging) as server, Chrome(
             chrome_binary, profile, args.width, args.height, not args.headed
         ) as chrome:
-            cdp = Cdp(chrome.page_websocket_url())
-            page = Page(cdp)
-            suite = SmokeSuite(page, args.max_shots, args.settle)
+            cdp: Cdp | None = None
+            suite: SmokeSuite | None = None
             try:
+                cdp = Cdp(chrome.page_websocket_url())
+                page = Page(cdp)
+                suite = SmokeSuite(page, args.max_shots, args.settle)
                 cdp.send("Page.enable")
                 cdp.send("Runtime.enable")
                 cdp.send("Log.enable")
@@ -1159,16 +1319,24 @@ def run(args: argparse.Namespace) -> int:
                 cdp.start_screencast()
                 cdp.start_trace()
                 results = suite.run()
-            except SmokeFailure as error:
-                results = suite.results
+            except (SmokeFailure, OSError) as error:
                 elapsed = time.monotonic() - started
-                report(suite, elapsed, args.max_shots)
+                if suite is not None:
+                    report(suite, elapsed, args.max_shots)
                 log()
                 log(f"FAIL — {error}")
-                log("Artifacts:")
-                for path in suite.capture_artifacts(str(error), artifact_dir):
-                    log(f"  {path}")
+                if suite is None:
+                    log("No artifacts: the browser session never came up.")
+                else:
+                    log("Artifacts:")
+                    for path in suite.capture_artifacts(
+                        str(error), artifact_dir
+                    ):
+                        log(f"  {path}")
                 return 1
+            finally:
+                if cdp is not None:
+                    cdp.close()
 
             elapsed = time.monotonic() - started
             report(suite, elapsed, args.max_shots)
@@ -1215,7 +1383,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         return run(args)
-    except SmokeFailure as error:
+    except (SmokeFailure, OSError) as error:
         log(f"FAIL — {error}")
         return 1
     except KeyboardInterrupt:

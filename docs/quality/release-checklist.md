@@ -52,6 +52,11 @@
       critical-path steps. Exits non-zero on failure and writes a screenshot,
       console log, and trace to `build/smoke-artifacts/<utc>/`.
 
+      Prerequisites: the Flutter SDK and a Chrome/Chromium binary on `PATH`.
+      No `chromedriver`, no Python packages. Add `--no-build` to re-use an
+      existing `build/web`. Artifacts are written **only when a run fails**, so
+      an empty `build/smoke-artifacts/` is the healthy state.
+
 ## 3. Acceptance and regression (on `main`, after the release merges)
 
 - [ ] Every **acceptance-rubric item** on every release-scope task is mapped to
@@ -59,6 +64,8 @@
 - [ ] Critical-path smoke suite passes (start → aim → fire → match → descend →
       win/lose → retry) — `python3 test/quality/release_smoke.py`, ten steps
       against a build of the candidate commit.
+      This verifies a **local** reproduction of the Pages artifact. The deployed
+      URL is verified in §9.
 - [ ] Wall bounce, life loss, level transition, and restart verified.
 - [ ] No regression in previously shipped behavior.
 - [ ] Edge cases verified: empty/full board, simultaneous win/lose, rapid
