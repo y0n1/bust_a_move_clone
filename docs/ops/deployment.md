@@ -61,8 +61,8 @@ flowchart LR
 ### CI (pull requests)
 
 1. Checkout.
-2. Install Flutter — **pinned** to `3.47.1` via
-   `subosito/flutter-action@v2` (`flutter-version: '3.47.1'`, `cache: true`).
+2. Install Flutter — **pinned** to the version in the **Toolchain baseline** row
+   of §1, via `subosito/flutter-action@v2` (`flutter-version`, `cache: true`).
 3. `flutter pub get`.
 4. `flutter analyze --fatal-infos`.
 5. `flutter test test/`.
@@ -178,7 +178,8 @@ one commit:
   `flutter-version: '3.47.1'` fails with `Unable to determine Flutter version`.
   Leave `channel` out; the default `stable` is what the pin resolves against.
   Removing `flutter-version` resolves the newest release on the channel, and
-  that is a floating toolchain. Never do either.
+  that is a floating toolchain. Never name a mismatched channel, and never drop
+  the pin.
 - **Never pin a version that has not passed the full gate.** The pin is a
   contract, not a suggestion.
 - Keep `cache: true`. The cache key includes the pinned version, so a bump
