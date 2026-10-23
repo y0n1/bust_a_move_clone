@@ -20,6 +20,13 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 - Product discovery, UX design, decision-log, release, quality, operations,
   and status artifact folders.
 
+### Fixed
+
+- Web icons shipped as base64 text instead of PNGs, one manifest icon that
+  pointed at a file which never existed, and a deprecated Apple meta tag.
+  ([#95](https://github.com/y0n1/bust_a_move_clone/issues/95),
+  [PR #97](https://github.com/y0n1/bust_a_move_clone/pull/97))
+
 ## [1.0.0] - 2026-10-23
 
 ### Added
@@ -35,6 +42,16 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 - MVVM architecture with pure-Dart domain, ViewModels, feature folders, and
   headless engine tests.
 - CI: analyze + tests on pull requests; GitHub Pages deployment on `main`.
+
+### Known issues
+
+- Web icons are served as base64 text and `manifest.json` declares a missing
+  `icons/Icon-maskable-512.png`, so the favicon and install icons are broken and
+  every load issues a 404. Presentation only — gameplay is unaffected. Fixed on
+  `develop` by [PR #97](https://github.com/y0n1/bust_a_move_clone/pull/97); see
+  the [release notes](docs/releases/release-notes/v1.0.0.md).
+- No accessibility audit, performance budget, or cross-browser evidence yet
+  (QE-3, QE-4, QE-5).
 
 [Unreleased]: https://github.com/y0n1/bust_a_move_clone/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/y0n1/bust_a_move_clone/releases/tag/v1.0.0
