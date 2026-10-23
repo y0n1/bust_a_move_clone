@@ -316,7 +316,7 @@ Never leave production in an unverified state.
 | Frame rate | 60 fps minimum | Not measured in production |
 | Input-to-feedback | < 100 ms | Not measured in production |
 | Deploy duration | ≤ 5 min | Build step 14.4 s locally |
-| PR gate wall-clock | ≤ 8 min | 0:41 pre-`build-web`; both jobs run in parallel |
+| PR gate wall-clock | ≤ 8 min | 1:07 with both jobs; they run in parallel |
 | Change-failure rate | < 15% | Not tracked |
 
 Measure before tightening. Record regressions as tasks, not anecdotes.
