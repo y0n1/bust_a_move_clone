@@ -61,7 +61,8 @@ flowchart LR
 ### CI (pull requests)
 
 1. Checkout.
-2. Install Flutter (`subosito/flutter-action@v2`, `channel: stable`, cache on).
+2. Install Flutter — **pinned** to `3.47.1` via
+   `subosito/flutter-action@v2` (`flutter-version: '3.47.1'`, `cache: true`).
 3. `flutter pub get`.
 4. `flutter analyze --fatal-infos`.
 5. `flutter test test/`.
@@ -73,7 +74,7 @@ before merge.
 ### Deploy (push to `main`)
 
 1. Checkout the merged commit.
-2. Install Flutter.
+2. Install Flutter — the **same pinned version** as CI.
 3. `flutter pub get`.
 4. `flutter build web --release --base-href /bust_a_move_clone/`.
 5. Upload `build/web` as the Pages artifact.
@@ -101,7 +102,56 @@ blank page and 404s for every asset.
 
 ---
 
-## 5. Post-deploy verification
+## 5. Bumping the toolchain
+
+The Flutter version is **pinned, not floating**. A channel (`stable`) resolves
+whatever is current at run time, so the toolchain could change between two runs
+of the same commit. The pin makes a green build mean the same thing tomorrow as
+it did today.
+
+The pin lives in **three** places. Change all of them in one commit:
+
+| File | What to change |
+|------|----------------|
+| `.github/workflows/ci.yml` | `flutter-version: '<version>'` |
+| `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
+| `docs/ops/deployment.md` | The **Toolchain baseline** row in §1 |
+
+### Procedure
+
+1. Check the target version exists on the stable channel:
+   `flutter --version` locally, or the
+   [Flutter release notes](https://docs.flutter.dev/release/release-notes).
+2. Update the version in both workflow files and the baseline row.
+3. Run the full gate locally on the new toolchain:
+
+   ```bash
+   flutter --version                      # confirm the bump took effect
+   flutter pub get
+   flutter analyze --fatal-infos
+   flutter test test/
+   flutter build web --release --base-href /bust_a_move_clone/
+   ```
+
+4. Commit as `ci(deps): bump Flutter to <version>` — a `ci`/`deps` scope, so it
+   does not bump the release version on its own.
+5. Let CI run. A green `analyze-test` **and** a green deploy prove the new pin.
+6. If the deploy fails, revert the three files together — never leave CI and the
+deploy workflow on different versions.
+
+### Rules
+
+- **Both workflows move together.** CI and production must build with the same
+  toolchain, or a green PR can still break the deploy.
+- **Never reintroduce `channel:`.** A channel silently defeats the pin.
+- **Never pin a version that has not passed the full gate.** The pin is a
+  contract, not a suggestion.
+- Keep `cache: true`. The cache is keyed on the pinned version, so a bump
+  invalidates it automatically and no manual cache clearing is needed.
+
+---
+
+## 6. Post-deploy verification
 
 Run after **every** production deploy. Record evidence in
 [`deployment-log.md`](deployment-log.md).
@@ -132,7 +182,7 @@ Run after **every** production deploy. Record evidence in
 
 ---
 
-## 6. Rollback
+## 7. Rollback
 
 Rollback is a first-class operation. Prefer a **forward revert** so `main`
 remains the single source of truth.
@@ -162,7 +212,7 @@ proposed DevOps task (see §10).
 
 ---
 
-## 7. Incident response
+## 8. Incident response
 
 | Severity | Definition | Target response |
 |----------|------------|-----------------|
@@ -185,7 +235,7 @@ Never leave production in an unverified state.
 
 ---
 
-## 8. Security and permissions
+## 9. Security and permissions
 
 - The deploy job is the only job with `pages: write` and `id-token: write`.
 - No long-lived secrets are required for Pages deployment.
@@ -201,7 +251,7 @@ Never leave production in an unverified state.
 
 ---
 
-## 9. Observability and budgets
+## 10. Observability and budgets
 
 | Signal | Budget | Current baseline |
 |--------|--------|------------------|
@@ -219,13 +269,13 @@ Measure before tightening. Record regressions as tasks, not anecdotes.
 
 ---
 
-## 10. Known gaps and improvement backlog
+## 11. Known gaps and improvement backlog
 
 These are **proposals for user triage**, not Ready tasks.
 
 | ID | Gap | Why it matters | Suggested branch |
 |----|-----|----------------|------------------|
-| OPS-1 | Flutter version floats on `stable` | Builds can drift without a code change | `ci/pin-flutter-version` |
+| ~~OPS-1~~ | ~~Flutter version floats on `stable`~~ — **closed**: pinned to 3.47.1 (§5) | Builds could drift without a code change | `ci/pin-flutter-version` |
 | OPS-2 | No `workflow_dispatch` for redeploy | Rollback requires a revert PR | `ci/manual-redeploy` |
 | OPS-3 | PR CI does not build the web release | Web compile/base-href errors reach `main` | `ci/build-web-on-pr` |
 | OPS-4 | No automated post-deploy smoke test | Verification is manual and easy to skip | `ci/post-deploy-smoke` |
@@ -240,8 +290,9 @@ These are **proposals for user triage**, not Ready tasks.
 
 ---
 
-## 11. Change log
+## 12. Change log
 
 | Date | Change | Owner |
 |------|--------|-------|
 | 2026-10-23 | Initial runbook and production baseline recorded | DevOps Engineer |
+| 2026-10-23 | Toolchain pinned to Flutter 3.47.1 in both workflows; bump procedure added (§5) | DevOps Engineer |
