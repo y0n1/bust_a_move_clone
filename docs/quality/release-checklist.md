@@ -46,14 +46,33 @@
       `flutter build web --release --base-href /bust_a_move_clone/`.
 - [ ] CI workflow is green on the candidate commit.
 - [ ] Build artifact size is within budget.
+- [ ] Release smoke suite passes against the built artifact:
+      `python3 test/quality/release_smoke.py` — builds, stages the bundle under
+      the Pages base href, and drives a headless Chrome through the ten
+      critical-path steps. Exits non-zero on failure and, **best effort**, writes
+      a screenshot, console log, and trace to
+      `build/smoke-artifacts/<utc>-<pid>/`.
+
+      Prerequisites: the Flutter SDK, a Chrome/Chromium binary on `PATH`, and
+      Python ≥ 3.8. No `chromedriver`, no Python packages. Add `--no-build` to
+      re-use an existing `build/web`. Artifacts are written **only when a run
+      fails**, so an empty `build/smoke-artifacts/` is the healthy state; a run
+      that dies before the browser comes up writes none at all and says so.
 
 ## 3. Acceptance and regression (on `main`, after the release merges)
 
 - [ ] Every **acceptance-rubric item** on every release-scope task is mapped to
       evidence, on `main` or on the deployed production build.
 - [ ] Critical-path smoke suite passes (start → aim → fire → match → descend →
-      win/lose → retry).
+      win/lose → retry) — `python3 test/quality/release_smoke.py`, ten steps
+      against a build of the candidate commit. With `--no-build`, first confirm
+      the existing `build/web` is a build of that same commit.
+      This verifies a **local** reproduction of the Pages artifact. The deployed
+      URL is verified in §9.
 - [ ] Wall bounce, life loss, level transition, and restart verified.
+- [ ] **Chain reaction verified by hand** (two pops in a row shows `COMBO ×2`).
+      The smoke suite observes this only when the board volunteers it and reports
+      `SKIP` otherwise, so a green run does not clear this item.
 - [ ] No regression in previously shipped behavior.
 - [ ] Edge cases verified: empty/full board, simultaneous win/lose, rapid
       input, interrupted shots, resize.
