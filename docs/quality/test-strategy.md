@@ -2,7 +2,7 @@
 
 > **Owner:** Quality Engineer  
 > **Status:** Active (baseline established 2026-10-23)  
-> **Companions:** [`release-checklist.md`](release-checklist.md), [`reports/`](reports/), [`../agent-team.md`](../agent-team.md), [`../architecture.md`](../architecture.md)
+> **Companions:** [`release-checklist.md`](release-checklist.md), [`bug-regression-template.md`](bug-regression-template.md), [`reports/`](reports/), [`../agent-team.md`](../agent-team.md), [`../architecture.md`](../architecture.md)
 
 ---
 
@@ -210,7 +210,11 @@ scheduled as P2.
 | **Low** | Cosmetic or minor | May ship; log for later |
 
 Every defect includes environment, steps, expected/actual, frequency, and
-evidence.
+evidence. Use [`bug-regression-template.md`](bug-regression-template.md) — it is the
+fill-in form for all five fields, and §3 of it defines the **fail-first rule**: the
+regression test must fail on the unfixed commit for the reason the issue names, then
+pass after the fix. A fix without such a test is rejected at review regardless of
+severity, because a symptom that vanished once is not a fixed bug.
 
 ## 13. Determinism and test data
 
@@ -286,4 +290,4 @@ Proposals for user triage — not Ready tasks.
 | QE-7 | Add a long-session memory check | Leaks surface after minutes, not seconds | `test/memory-soak` |
 | QE-8 | Add service-worker update tests | Stale builds are a production risk | `test/sw-update` |
 | QE-9 | Add deterministic replay/seed tests | Protects engine determinism | `test/deterministic-replay` |
-| QE-10 | Add a bug regression template | Every fix gets a test | `docs/regression-template` |
+| QE-10 | ~~Add a bug regression template~~ — **delivered**, see [`bug-regression-template.md`](bug-regression-template.md) | Every fix gets a test | `docs/regression-template` |

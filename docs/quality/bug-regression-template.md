@@ -1,7 +1,7 @@
 # Bug Regression Template — Bust-A-Move Clone
 
 > **Owner:** Quality Engineer · **Task:** QE-10 / issue #78
-> **Companions:** [`test-strategy.md`](test-strategy.md), [`release-checklist.md`](release-checklist.md), [`reports/2026-10-23-v1.0.0-baseline.md`](reports/2026-10-23-v1.0.0-baseline.md)
+> **Companions:** [`test-strategy.md`](test-strategy.md), [`release-checklist.md`](release-checklist.md), [`reports/2026-10-23-v1.0.0-baseline.md`](reports/2026-10-23-v1.0.0-baseline.md), [`reports/2026-10-23-qe10-template-trial.md`](reports/2026-10-23-qe10-template-trial.md)
 
 ## 1. Purpose
 
@@ -41,6 +41,11 @@ Copy verbatim into the GitHub issue body. Replace every `___`.
 | Viewport (WxH) + DPR | ___ |
 | Input | mouse / touch / keyboard |
 
+Mark a field `n/a` when the defect cannot reach that layer — a pure engine or
+ViewModel bug has no browser, OS or viewport. `___` means *not captured yet*;
+`n/a` means *cannot apply*. Conflating the two lets a report look complete when
+it is not.
+
 ### Steps to reproduce
 1. ___
 2. ___
@@ -72,6 +77,7 @@ ___
 
 ### Regression test to add
 - **File:** `test/engine_test.dart` | `test/descent_test.dart` | `test/gameplay/viewmodel/game_viewmodel_test.dart` | `test/start_screen_test.dart` | new file ___
+- **Harness:** `test(...)` | `testWidgets(...)` + `tester.pump(Duration)` — name how time advances, if the defect involves time
 - **Setup:** seed ___, `cols` ___, `rows` ___, `activeColorCount` ___, `descentInterval` ___, level ___
 - **Action:** ___
 - **Asserts:** ___ (exact `expect` on `status` / `bubbleRow` / `score` / `lives` / `bubbles.length` / widget finder)
@@ -105,8 +111,18 @@ before and after the fix is broken; rewrite it. Add `reason:` to non-obvious `ex
 **Where the test goes.** Engine rules → `test/engine_test.dart` or
 `test/descent_test.dart` (pure Dart, `math.Random(seed)`, no Flutter). ViewModel →
 `test/gameplay/viewmodel/game_viewmodel_test.dart`. Start screen →
-`test/start_screen_test.dart`. Gameplay widgets → `test/gameplay/ui/`, which exists
-but is **empty**: the first gameplay widget regression creates the file.
+`test/start_screen_test.dart`. Renderer and painter logic → `test/gameplay/ui/`.
+Neither `test/gameplay/ui/` nor `test/gameplay/logic/` is in the tree: git does not
+track empty directories, so the first test in either place creates the directory
+and the file together.
+
+**When nothing can reach the code.** If the defect lives in a private method behind a
+real `Ticker`, or in a `CustomPainter` that only runs on a real canvas, no plain unit
+test can drive it. Do not downgrade the report to "verify manually": say what seam is
+missing and treat **adding it as part of the fix**. Two shapes that work today — a
+`testWidgets` test pumping the scheduler, or extracting the pure calculation into a
+function the test can call — and both are legitimate. A defect that cannot be tested is
+a defect that will come back.
 
 ## 4. Determinism requirements
 
@@ -119,7 +135,13 @@ from numbers. Capture **all** of these:
 4. **Shot sequence** — one angle in radians per shot, in order. `engine.shoot(s, angle)`:
    `0` is straight up, positive rotates clockwise toward the right, clamped by the
    ViewModel to ±60° (`math.pi / 3`). Record ticks per shot too.
-5. **Observable outcome** — the exact `GameStatus`, `bubbleRow`, `score`, `lives`, and
+5. **Clock and tick rate** — for anything driven by a `Ticker`, record ticks per second
+   and the tick index at which the symptom appears. A defect can be *in the clock
+   itself*: `docs/design/specs/honest-shot-score.md` §1.2 (D2) is a ViewModel that
+   summed the Ticker's cumulative duration every tick, so its FX clock ran ~30× fast
+   within one second and the popup was never painted. No seed reproduces that — only a
+   pinned tick count does.
+6. **Observable outcome** — the exact `GameStatus`, `bubbleRow`, `score`, `lives`, and
    `bubbles.length` you saw.
 
 `Engine.rng` is consumed by `startLevel()` **and** by the palette refill inside
@@ -166,14 +188,15 @@ bugs drive `GameViewModel(engine)` via `computeLayout(Size)`, `updateAim(Offset,
 
 | Severity | Regression must be | File | Gates release |
 |----------|--------------------|------|---------------|
-| **Critical** — unplayable, blank page, crash, data loss, production down | Engine or ViewModel unit test **and** a smoke check once #69 lands | `test/engine_test.dart`, `test/descent_test.dart`, `test/gameplay/viewmodel/game_viewmodel_test.dart` | **Yes — blocks merge and release** |
+| **Critical** — unplayable, blank page, crash, data loss, production down | Engine or ViewModel unit test **and** a matching step in `test/quality/release_smoke.py` | `test/engine_test.dart`, `test/descent_test.dart`, `test/gameplay/viewmodel/game_viewmodel_test.dart` | **Yes — blocks merge and release** |
 | **High** — core loop broken: match/pop, chain, cluster drop, descent, win/lose, lives, restart | Engine or ViewModel unit test | same as above | **Yes — blocks release** |
 | **Medium** — degraded but playable with a workaround | Widget test if visual/input, otherwise unit/ViewModel | `test/gameplay/ui/` (new file), `test/start_screen_test.dart` | Only with recorded user risk acceptance |
 | **Low** — cosmetic/minor | Optional; add only if cheap and stable | nearest existing file | No |
 
-No gameplay widget tests exist yet (`test/gameplay/ui/` and `test/gameplay/logic/` are
-empty), so a Medium gameplay UI bug relies on manual verification until the first one
-lands — say so in the issue rather than implying coverage.
+No gameplay widget or renderer tests exist yet — `test/gameplay/ui/` and
+`test/gameplay/logic/` are not in the tree at all (git does not track empty
+directories), so a Medium gameplay UI bug relies on manual verification until the
+first one lands — say so in the issue rather than implying coverage.
 
 ## 6. Triage SLA
 
@@ -195,7 +218,7 @@ in the issue's "Fix verification" checklist until the linked issue lands.
 
 | Gap | Issue | What slips through |
 |-----|-------|--------------------|
-| No smoke/E2E against the built artifact | #69 | Blank page, broken base href, service-worker staleness, start→play navigation |
+| ~~No smoke/E2E against the built artifact~~ | ~~#69~~ | **Closed.** `test/quality/release_smoke.py` (PR #96) drives the deployed artifact in headless Chrome and gates on blank page, base href and start→play navigation. Two residual gaps: service-worker staleness has a check (`test/quality/sw_update_check.py`, PR #102) that **CI does not run yet**, so staleness stays manual; and smoke step 10 does not fail on a missing manifest or image asset. |
 | No coverage threshold | #70 | Untested engine branches (score, combo, multi-pop) with no visible signal |
 | No accessibility audit | #71 | Color-only bubble cues, missing semantics, focus and contrast failures |
 | No performance trace / Lighthouse budget | #72 | Jank during pops, chains, descent; load-time regressions |
@@ -203,4 +226,5 @@ in the issue's "Fix verification" checklist until the linked issue lands.
 
 Consequence: a High defect filed against one of these areas must include a **manual
 reproduction on the built artifact** in its evidence. A green `flutter test test/` is
-not evidence for any of them.
+not evidence for any of them, and neither is a green smoke run for the four that are
+still open — the suite only proves what its steps assert.
