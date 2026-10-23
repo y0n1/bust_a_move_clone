@@ -74,9 +74,10 @@ flowchart LR
 ```
 
 No PR, no CI run, no `analyze-test`, no `build-web`, no QE verdict — `ci.yml`
-only listens on `pull_request`. A typo, a red test, or a broken web build
-reaches players in one command. The ruleset blocks *history-rewriting*
-accidents (force-push, deletion), not *quality* ones.
+listens only on `pull_request` and pushes to `develop`, never on a push to
+`main`. A typo, a red test, or a broken web build reaches players in one
+command. The ruleset blocks *history-rewriting* accidents (force-push,
+deletion), not *quality* ones.
 
 ## 3. Proposed policy
 

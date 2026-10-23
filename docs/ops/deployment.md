@@ -36,7 +36,7 @@ page because every asset request resolves to the wrong URL.
 |-------------|--------------------|---------|
 | **Local dev** | `flutter run -d chrome` | Fast iteration; not a release artifact |
 | **Local production build** | `flutter build web --release --base-href /bust_a_move_clone/` | Reproduce the exact Pages artifact |
-| **CI** | GitHub Actions on pull requests | Analyze, test, and web build gate |
+| **CI** | GitHub Actions on pull requests and pushes to `develop` | Analyze, test, and web build gate |
 | **Production** | GitHub Actions on push to `main` | Player-facing build |
 
 There is currently **no PR preview environment**. A PR is verified through CI,
@@ -129,15 +129,15 @@ whatever is current at run time, so the toolchain could change between two runs
 of the same commit. The pin makes a green build mean the same thing tomorrow as
 it did today.
 
-The version appears in **four** files that must agree — one occurrence each,
-because `ci.yml` defines it once in a workflow-level `env:` block that both of
-its jobs read. Change all four in one commit:
+The version appears in **four** files that must agree. `ci.yml` defines it once,
+in a workflow-level `env:` block that both of its jobs read, so the two jobs
+cannot drift onto different toolchains. Change all four in one commit:
 
 | File | What to change |
 |------|----------------|
 | `.github/workflows/ci.yml` | `FLUTTER_VERSION` in the workflow-level `env:` block |
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
-| `docs/ops/deployment.md` | The **Toolchain baseline** row in §1 |
+| `docs/ops/deployment.md` | The **Toolchain baseline** row in §1, **and** the illustrative `checkout`/`fvm use` commands in step 3 below |
 | `README.md` | The version in the prerequisites block (prose only) |
 
 ### Procedure
@@ -355,4 +355,4 @@ These are **proposals for user triage**, not Ready tasks.
 |------|--------|-------|
 | 2026-10-23 | Initial runbook and production baseline recorded | DevOps Engineer |
 | 2026-10-23 | Toolchain pinned to Flutter 3.47.1 in both workflows; bump procedure added (§5) | DevOps Engineer |
-| 2026-10-23 | PR gate builds the production web bundle in parallel with analyze-test; bundle size (on-disk + gzip) reported to the job summary (§3, §10) | DevOps Engineer |
+| 2026-10-23 | PR gate builds the production web bundle in parallel with analyze-test; bundle size (on-disk + gzip) reported to the job summary (§3) | DevOps Engineer |

@@ -66,7 +66,10 @@ jobs:
       # On-disk size answers "how big is the artifact"; gzip answers the payload
       # budget in the product vision (EQ-5 is a gzip figure). Report both, or
       # someone reads the raw number against the gzip cap and concludes the
-      # budget is blown. Best-effort: a missing file drops its row, never fails.
+      # budget is blown. Level 6 is gzip's default and what the recorded 0.54 MB
+      # baseline was measured at — `-9` reports a tighter 0.53 MB and makes the
+      # job disagree with the doc every run. Best-effort: a missing file drops
+      # its row, never fails.
       - name: Report bundle size
         run: |
           {
@@ -78,7 +81,7 @@ jobs:
             if [ -f build/web/main.dart.js ]; then
               du -sh build/web/main.dart.js \
                 | awk '{printf "| `main.dart.js` (on disk) | %s |\n", $1}'
-              gzip -9 -c build/web/main.dart.js | wc -c \
+              gzip -6 -c build/web/main.dart.js | wc -c \
                 | awk '{printf "| `main.dart.js` (gzip) | %.2f MB |\n", $1/1048576}'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
