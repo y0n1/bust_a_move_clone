@@ -146,6 +146,12 @@ This suite is automated: `python3 test/quality/release_smoke.py` runs all ten
 steps against a freshly built artifact and exits non-zero if any step fails. A
 release candidate is not verified until it passes.
 
+One step can report **SKIP** instead of PASS. The chain-reaction check depends
+on the board volunteering two pops in a row, which the suite cannot force, so a
+non-observation is reported loudly and exits zero rather than flaking a release
+gate. **A SKIP is not a pass**: that item stays a manual check (§ below and
+`release-checklist.md` §3).
+
 **Scope of the automation.** The script drives the real built artifact in
 headless Chrome and asserts on the HUD text the app publishes through Flutter
 web semantics. That is enough for the journey, the state transitions and the
@@ -153,13 +159,14 @@ console, but not for everything the ten items name:
 
 | Item | Automated to the level of |
 |------|---------------------------|
-| 2–3 | Behaviour — the shot leaves the cannon and a miss costs nothing. Guide motion and bounce angles are not asserted. |
-| 5 | A chain reaction, proven from the `COMBO ×N` HUD text. The detached-cluster **drop** half has no observable surface and is covered by engine unit tests instead. |
-| 6 | A bubble reaches the cannon line and costs a life. The exact row is an engine unit test. |
-| 7 | A life loss costs exactly one life and keeps the level. Level **progression** on a clear is covered by engine and ViewModel tests. |
+| 2–3 | **Pointer input only.** Clicks across the playfield and at a shallow angle are accepted, no overlay appears, and the HUD stays readable. Nothing here proves a shot was launched — the projectile and the aim guide are canvas-only — and a shot that changed nothing observable would pass. Guide motion and bounce angles are not asserted. |
+| 5 | A chain reaction, proven from the `COMBO ×N` HUD text — **when the board volunteers one**. A level 1 board descends on every shot, so a life is lost about every fourth shot and each loss rebuilds the board and zeroes the streak; the wait is too heavy-tailed to gate on, so a non-observation is a loud SKIP and the item stays manual in `release-checklist.md` §3. The detached-cluster **drop** half has no observable surface and is covered by engine unit tests. |
+| 6 | A life was lost with the wall at the cannon line. The step observes the loss, not the row that caused it; the exact row is an engine unit test. |
+| 7 | A life loss costs exactly one life and keeps the level. Level **progression** on a clear is covered by engine tests (`startLevel(level + 1)`); `GameViewModel.restart()`'s won branch has no ViewModel test yet. |
 
 It also verifies a **local** reproduction of the Pages artifact, not the
-deployed URL. Post-deploy verification against production is §7 and the
+deployed URL. Post-deploy verification against production is
+[`release-checklist.md`](release-checklist.md) §9 and the
 [deployment runbook](../ops/deployment.md).
 
 ## 10. Accessibility checklist
@@ -238,7 +245,7 @@ evidence.
 | Cross-browser evidence | ❌ none | Not yet tested |
 | Accessibility audit | ❌ none | Not yet performed |
 | Performance trace | ❌ none | Not yet measured |
-| E2E/smoke automation | ✅ automated | `python3 test/quality/release_smoke.py` — 10/10 steps, 31–69 s with the build (12–49 s with `--no-build`) |
+| E2E/smoke automation | ✅ automated | `python3 test/quality/release_smoke.py` — 9–10/10 steps, observed 12–101 s end to end (build included unless `--no-build`) |
 | Release tag | ❌ missing | No `v1.0.0` tag |
 
 Full report: [`reports/2026-10-23-v1.0.0-baseline.md`](reports/2026-10-23-v1.0.0-baseline.md).
@@ -248,8 +255,20 @@ when QE-1 landed. Every other row is the baseline as measured.
 
 The smoke timing is a range, not a constant: the suite hunts for a match-3 and
 for a chain reaction on an **unseeded** board, so how long it runs depends on
-how quickly the board cooperates. The upper bound covers a run where the first
-chain took 59 shots.
+how quickly the board cooperates. A run that never sees a chain burns the whole
+chain budget — 101 s end to end, the worst observed — so the shot count, not the
+app, dominates the duration. The default budgets bound it at roughly 120 shots,
+or about 150 s, well inside the script's own five-minute guard.
+
+The chain hunt has its own 80-shot budget rather than sharing the 40 used for
+the match-3 hunt: across nine runs the first chain arrived after 4, 8, 21, 24,
+26, 29, 39, 59 and 77 shots, and a later run saw none in 80. That tail is not
+something a fixed budget can tame — a level 1 board descends every shot, so a
+life loss rebuilds the board and zeroes the streak about every fourth shot — so
+the step reports **SKIP** instead of FAIL when the board does not cooperate. The
+durable fix is a test-only, `--dart-define`-gated seed hook that lets the suite
+build a board that chains on demand; that is production code, so it belongs to
+the Flutter Developer, not to QE.
 
 ## 16. Improvement backlog
 
