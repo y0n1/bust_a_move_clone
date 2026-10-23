@@ -150,7 +150,7 @@ involved, log it in `deployment-log.md` with a `ROLLBACK:` prefix.
 | Area | Impact |
 |------|--------|
 | **Direct pushes to `main`** | No longer possible — including the Product Owner's. Docs-only and hotfix commits must go through a PR. |
-| **Hotfix latency** | +1 PR + ~40 s CI (measured on PR #91). Emergency path: §5 rollback, then re-enable. Prefer a forward revert (see `deployment.md` §6). |
+| **Hotfix latency** | +1 PR + ~40 s CI (measured on PR #91). Emergency path: §5 rollback, then re-enable. Prefer a forward revert (see `deployment.md` §7). |
 | **PR #91 flow** | **Already compliant** — branch `docs/backlog-board-links`, `analyze-test` green, mergeable. Adopting protection is near-zero friction. |
 | **Deploy workflow** | **Unaffected.** A PR merge is still a `push` to `main`, so `deploy-pages.yml` fires exactly as today. Protection gates *how* commits arrive, not the resulting push event. |
 | **Automation / bots** | No workflow currently pushes to `main` (deploy is read-only: `contents: read`), so nothing breaks. A future bot that pushes to `main` would need a bypass actor. |

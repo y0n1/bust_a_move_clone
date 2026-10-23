@@ -109,7 +109,8 @@ whatever is current at run time, so the toolchain could change between two runs
 of the same commit. The pin makes a green build mean the same thing tomorrow as
 it did today.
 
-The pin lives in **three** places. Change all of them in one commit:
+The pin lives in **three** places that enforce it. Change all of them in one
+commit:
 
 | File | What to change |
 |------|----------------|
@@ -117,15 +118,20 @@ The pin lives in **three** places. Change all of them in one commit:
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
 | `docs/ops/deployment.md` | The **Toolchain baseline** row in §1 |
 
+A fourth place *describes* the toolchain to humans: the prerequisites block in
+`README.md`. It carries no pin, but the prose should not contradict one.
+
 ### Procedure
 
-1. Check the target version exists on the stable channel:
-   `flutter --version` locally, or the
+1. Confirm the target version exists on the stable channel in the
    [Flutter release notes](https://docs.flutter.dev/release/release-notes).
+   `flutter --version` reports what is installed *locally*, which is not
+   evidence that a different version is available.
 2. Update the version in both workflow files and the baseline row.
-3. Run the full gate locally on the new toolchain:
+3. Upgrade locally, then run the full gate on the new toolchain:
 
    ```bash
+   flutter upgrade                        # or switch to the target version
    flutter --version                      # confirm the bump took effect
    flutter pub get
    flutter analyze --fatal-infos
@@ -136,18 +142,23 @@ The pin lives in **three** places. Change all of them in one commit:
 4. Commit as `ci(deps): bump Flutter to <version>` — a `ci`/`deps` scope, so it
    does not bump the release version on its own.
 5. Let CI run. A green `analyze-test` **and** a green deploy prove the new pin.
+   Two runs are needed to demonstrate cache reuse: the first populates the cache
+   for the new version, the second hits it.
 6. If the deploy fails, revert the three files together — never leave CI and the
-deploy workflow on different versions.
+   deploy workflow on different versions.
 
 ### Rules
 
 - **Both workflows move together.** CI and production must build with the same
   toolchain, or a green PR can still break the deploy.
-- **Never reintroduce `channel:`.** A channel silently defeats the pin.
+- **`flutter-version` is the pin; `channel:` is not.** `channel` defaults to
+  `stable`, so deleting `flutter-version` silently restores a floating toolchain
+  just as surely as adding `channel: stable` does. Never do either.
 - **Never pin a version that has not passed the full gate.** The pin is a
   contract, not a suggestion.
-- Keep `cache: true`. The cache is keyed on the pinned version, so a bump
-  invalidates it automatically and no manual cache clearing is needed.
+- Keep `cache: true`. The cache key includes the pinned version and the framework
+  revision, so a bump invalidates it automatically and no manual cache clearing
+  is needed.
 
 ---
 
@@ -208,7 +219,7 @@ bypassed.
 
 `deploy-pages.yml` only triggers on a push to `main`; there is no
 `workflow_dispatch` input for redeploying an arbitrary ref. Adding one is a
-proposed DevOps task (see §10).
+proposed DevOps task (see §11).
 
 ---
 
@@ -275,7 +286,7 @@ These are **proposals for user triage**, not Ready tasks.
 
 | ID | Gap | Why it matters | Suggested branch |
 |----|-----|----------------|------------------|
-| ~~OPS-1~~ | ~~Flutter version floats on `stable`~~ — **closed**: pinned to 3.47.1 (§5) | Builds could drift without a code change | `ci/pin-flutter-version` |
+| ~~OPS-1~~ | ~~Flutter version floats on `stable`~~ — **closed**: pinned to 3.47.1 (§5) | Builds could have drifted without a code change | `ci/pin-flutter-version` |
 | OPS-2 | No `workflow_dispatch` for redeploy | Rollback requires a revert PR | `ci/manual-redeploy` |
 | OPS-3 | PR CI does not build the web release | Web compile/base-href errors reach `main` | `ci/build-web-on-pr` |
 | OPS-4 | No automated post-deploy smoke test | Verification is manual and easy to skip | `ci/post-deploy-smoke` |
