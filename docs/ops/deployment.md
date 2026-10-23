@@ -1,0 +1,247 @@
+# Deployment Runbook — Bust-A-Move Clone
+
+> **Owner:** DevOps Engineer  
+> **Production:** <https://y0n1.github.io/bust_a_move_clone/>  
+> **Last verified:** 2026-10-23 (v1.0.0+1, commit `4b5d3fe`)  
+> **Companions:** [`deployment-log.md`](deployment-log.md), [`../agent-team.md`](../agent-team.md), [`.github/workflows/`](../../.github/workflows/)
+
+---
+
+## 1. Production contract
+
+| Item | Value |
+|------|-------|
+| Hosting | GitHub Pages, deployed through GitHub Actions |
+| URL | `https://y0n1.github.io/bust_a_move_clone/` |
+| Repository | `y0n1/bust_a_move_clone` |
+| Source branch | `main` |
+| Deploy workflow | `.github/workflows/deploy-pages.yml` |
+| CI workflow | `.github/workflows/ci.yml` |
+| Build command | `flutter build web --release --base-href /bust_a_move_clone/` |
+| Build artifact | `build/web` |
+| Artifact upload | `actions/upload-pages-artifact@v3` |
+| Deploy action | `actions/deploy-pages@v4` |
+| Token permissions | `contents: read`, `pages: write`, `id-token: write` |
+| Concurrency | group `pages`, `cancel-in-progress: false` |
+| Toolchain baseline | Flutter 3.47.1 stable, Dart 3.13.1 |
+
+The base href **must** match the Pages sub-path. A mismatch produces a blank
+page because every asset request resolves to the wrong URL.
+
+---
+
+## 2. Environments
+
+| Environment | How it is produced | Purpose |
+|-------------|--------------------|---------|
+| **Local dev** | `flutter run -d chrome` | Fast iteration; not a release artifact |
+| **Local production build** | `flutter build web --release --base-href /bust_a_move_clone/` | Reproduce the exact Pages artifact |
+| **CI** | GitHub Actions on pull requests | Analyze + test gate |
+| **Production** | GitHub Actions on push to `main` | Player-facing build |
+
+There is currently **no PR preview environment**. A PR is verified through CI,
+tests, and a locally served production build.
+
+---
+
+## 3. Pipeline
+
+```mermaid
+flowchart LR
+    PR[Pull request] --> CI[CI<br/>analyze + test]
+    CI -->|green + QE verdict| MERGE[Merge to main]
+    MERGE --> BUILD[Build web release<br/>base-href /bust_a_move_clone/]
+    BUILD --> UPLOAD[Upload Pages artifact]
+    UPLOAD --> DEPLOY[Deploy to GitHub Pages]
+    DEPLOY --> VERIFY[Post-deploy verification]
+    VERIFY -->|pass| LOG[Deployment log]
+    VERIFY -->|fail| ROLLBACK[Rollback + incident]
+```
+
+### CI (pull requests)
+
+1. Checkout.
+2. Install Flutter (`subosito/flutter-action@v2`, `channel: stable`, cache on).
+3. `flutter pub get`.
+4. `flutter analyze --fatal-infos`.
+5. `flutter test test/`.
+
+**Gap:** CI does not currently build the web release. Add the production build
+as a required PR check so base-href and web-only compile errors are caught
+before merge.
+
+### Deploy (push to `main`)
+
+1. Checkout the merged commit.
+2. Install Flutter.
+3. `flutter pub get`.
+4. `flutter build web --release --base-href /bust_a_move_clone/`.
+5. Upload `build/web` as the Pages artifact.
+6. Deploy with `actions/deploy-pages@v4`.
+
+Only one deployment runs at a time. In-flight production deploys are never
+cancelled.
+
+---
+
+## 4. Reproducing a production build locally
+
+```bash
+flutter pub get
+flutter build web --release --base-href /bust_a_move_clone/
+rm -rf /tmp/bam-preview && mkdir -p /tmp/bam-preview
+cp -r build/web /tmp/bam-preview/bust_a_move_clone
+python3 -m http.server 8400 --directory /tmp/bam-preview
+# Open http://localhost:8400/bust_a_move_clone/
+```
+
+The artifact must be served **under** a `bust_a_move_clone/` directory so the
+base href resolves. Serving `build/web` directly at the server root produces a
+blank page and 404s for every asset.
+
+---
+
+## 5. Post-deploy verification
+
+Run after **every** production deploy. Record evidence in
+[`deployment-log.md`](deployment-log.md).
+
+- [ ] Deploy workflow conclusion is `success`.
+- [ ] `curl -I https://y0n1.github.io/bust_a_move_clone/` returns `200`.
+- [ ] `version.json` matches the released version and build number.
+- [ ] The app reaches the start screen with no blocking console errors.
+- [ ] No failed asset requests in the browser network panel.
+- [ ] Smoke path passes: PLAY → aim → fire → match-3 pop → next shot.
+- [ ] Wall bounce, life loss, level transition, and restart still work.
+- [ ] Service worker updates to the new build without a stale-cache trap.
+- [ ] Load time and transfer size are within budget.
+- [ ] Rollback path is still valid.
+
+### Verified baseline — 2026-10-23
+
+| Check | Result |
+|-------|--------|
+| HTTP status | `200` in 0.32 s |
+| `version.json` | `{"version":"1.0.0","build_number":"1"}` |
+| `main.dart.js` | 1,895,519 B raw; 0.54 MB gzip |
+| `canvaskit.wasm` | 6.95 MB raw; 2.79 MB gzip |
+| `build/web` total | 40 MB (includes all renderer variants) |
+| Deploy run | [39882358617](https://github.com/y0n1/bust_a_move_clone/actions/runs/39882358617) — success |
+| Browser smoke | Chromium: start screen → PLAY → game screen (SCORE 0, LIVES 3, LEVEL 1); no console errors |
+| Deployed commit | `4b5d3fe0316f9c8c329fa485990dc6cb393a8f87` |
+
+---
+
+## 6. Rollback
+
+Rollback is a first-class operation. Prefer a **forward revert** so `main`
+remains the single source of truth.
+
+### Standard rollback (preferred)
+
+1. Identify the last known-good commit from
+   [`deployment-log.md`](deployment-log.md).
+2. Open a revert PR on `main` (never commit directly to `main`).
+3. Let CI pass; get QE confirmation that the revert restores the known-good
+   behavior.
+4. Merge; the deploy workflow redeploys automatically.
+5. Run the post-deploy verification and log the rollback entry.
+
+### Emergency rollback
+
+If a revert cannot be merged quickly, the user may authorize a manual
+redeploy of the last known-good artifact. **This requires explicit user
+approval** and a deployment-log entry explaining why the normal path was
+bypassed.
+
+### Current limitation
+
+`deploy-pages.yml` only triggers on a push to `main`; there is no
+`workflow_dispatch` input for redeploying an arbitrary ref. Adding one is a
+proposed DevOps task (see §10).
+
+---
+
+## 7. Incident response
+
+| Severity | Definition | Target response |
+|----------|------------|-----------------|
+| **SEV1** | Production down, blank page, or game unplayable | Roll back immediately; notify user |
+| **SEV2** | Core loop broken (aim/fire/match/descent/lives) | Roll back or hotfix; notify user |
+| **SEV3** | Degraded experience with a workaround | Fix in the next release; log |
+| **SEV4** | Cosmetic or minor | Backlog |
+
+### First 15 minutes
+
+1. Confirm the incident from the production URL and browser console.
+2. Stop the bleeding: roll back to the last known-good commit.
+3. Verify the rollback with the post-deploy checklist.
+4. Notify the user with impact, current status, and next update time.
+5. Preserve evidence: workflow run, console logs, screenshots, timestamps.
+6. Open a defect with reproduction steps and link the failed deploy.
+7. Write a blameless postmortem with a prevention task.
+
+Never leave production in an unverified state.
+
+---
+
+## 8. Security and permissions
+
+- The deploy job is the only job with `pages: write` and `id-token: write`.
+- No long-lived secrets are required for Pages deployment.
+- Never print tokens or secrets in workflow logs.
+- Never run untrusted PR code through `pull_request_target`.
+- Keep Actions on reviewed versions; prefer SHA pinning for third-party
+  actions.
+- Enable branch protection on `main`: required CI, no force-push, no direct
+  pushes by automation.
+- Enable Dependabot alerts and dependency review where practical.
+- No new third-party service, custom domain, or paid tier without user
+  approval.
+
+---
+
+## 9. Observability and budgets
+
+| Signal | Budget | Current baseline |
+|--------|--------|------------------|
+| Production availability | 99.9% target | Not monitored yet |
+| Cold load (Fast 3G, mid-tier) | ≤ 5 s to interactive | Not measured yet |
+| `main.dart.js` (gzip) | ≤ 0.75 MB | 0.54 MB |
+| `canvaskit.wasm` (gzip) | ≤ 3.25 MB | 2.79 MB |
+| `build/web` total | ≤ 45 MB | 40 MB |
+| Frame rate | 60 fps minimum | Not measured in production |
+| Input-to-feedback | < 100 ms | Not measured in production |
+| Deploy duration | ≤ 5 min | Build step 14.4 s locally |
+| Change-failure rate | < 15% | Not tracked |
+
+Measure before tightening. Record regressions as tasks, not anecdotes.
+
+---
+
+## 10. Known gaps and improvement backlog
+
+These are **proposals for user triage**, not Ready tasks.
+
+| ID | Gap | Why it matters | Suggested branch |
+|----|-----|----------------|------------------|
+| OPS-1 | Flutter version floats on `stable` | Builds can drift without a code change | `ci/pin-flutter-version` |
+| OPS-2 | No `workflow_dispatch` for redeploy | Rollback requires a revert PR | `ci/manual-redeploy` |
+| OPS-3 | PR CI does not build the web release | Web compile/base-href errors reach `main` | `ci/build-web-on-pr` |
+| OPS-4 | No automated post-deploy smoke test | Verification is manual and easy to skip | `ci/post-deploy-smoke` |
+| OPS-5 | No uptime monitoring | Outages are discovered by players | `ci/uptime-check` |
+| OPS-6 | No Lighthouse/performance gate | Size and load regressions are invisible | `ci/lighthouse-budget` |
+| OPS-7 | No Dependabot/dependency review | Supply-chain risk | `ci/dependency-review` |
+| OPS-8 | Branch protection not documented | `main` can be pushed directly | `docs/branch-protection` |
+| OPS-9 | No CI timeouts/concurrency | Stuck runs waste minutes | `ci/timeouts` |
+| OPS-10 | `v1.0.0` tag missing | Release is not traceable to a tag | `chore/tag-v1.0.0` |
+| OPS-11 | No PR preview deploys | Reviewers cannot click the change | `ci/pr-preview` |
+| OPS-12 | Service-worker update path unverified | Players may see stale builds | `ci/sw-update-verification` |
+
+---
+
+## 11. Change log
+
+| Date | Change | Owner |
+|------|--------|-------|
+| 2026-10-23 | Initial runbook and production baseline recorded | DevOps Engineer |

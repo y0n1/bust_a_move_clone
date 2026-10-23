@@ -34,3 +34,12 @@ gh project item-create 3 --owner y0n1 --title "Title" --body "Body"
 
 # Edit item
 gh project item-edit <item-id> --title "New title"
+```
+
+## State snapshot — 2026-10-23
+
+- 45 items, all **Done**; Backlog, Ready, In progress, and In review are empty.
+- No implementation may start until the user triages tasks into **Ready**.
+- Triage proposals for the new QE/DevOps roles and the product/UX kickoff:
+  `docs/status/2026-10-23-kickoff.md`.
+- Board rules and status transitions: `docs/agent-team.md` §5 and `docs/project-board.md`.
