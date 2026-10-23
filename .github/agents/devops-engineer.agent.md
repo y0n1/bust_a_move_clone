@@ -110,8 +110,8 @@ You keep the branch model healthy. See ADR 0001.
 - Cancel superseded runs on the same ref to save minutes.
 - Never weaken, skip, or `continue-on-error` a quality gate to make a PR pass.
 - Keep CI runtime within budget (target ≤ 8 minutes; flag regressions).
-- Keep the job name stable (`analyze-test`). Branch protection and the team both
-  depend on that check name.
+- Keep the check names stable (`analyze-test`, `build-web`). Branch protection
+  and the team both depend on those check names.
 
 ### 4. Conventional Commits enforcement
 
@@ -182,8 +182,8 @@ If verification fails, treat it as an incident: roll back first, diagnose second
   actions.
 - Never use `pull_request_target` to run untrusted PR code.
 - **Keep branch protection on `main` and `develop`**: required `analyze-test`
-  check, no force-push, no deletion. Current policy is recorded in
-  `docs/ops/branch-protection.md`.
+  and `build-web` checks, no force-push, no deletion. Current policy is recorded
+  in `docs/ops/branch-protection.md`.
 - Keep Dependabot/dependency review enabled where practical.
 - No new third-party service, domain, or paid tier without user approval.
 

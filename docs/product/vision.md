@@ -200,7 +200,7 @@ Owner to confirm, not commitments.
 | EQ-2 | Test suite | 100% pass; ≥ 70% line coverage of `lib/game/` | `flutter test --coverage` (lcov) | Coverage not collected (QE-2 / #70); baseline unknown |
 | EQ-3 | Frame rate | p95 ≥ 55 fps during a full level | Flutter DevTools / Chrome tracing on reference hardware | No trace yet (QE-4 / #72); reference hardware undefined |
 | EQ-4 | Input latency | Pointer-to-aim < 100 ms | DevTools frame timeline; charter gate | Manual only |
-| EQ-5 | Web payload | `main.dart.js` gzip ≤ 0.60 MB (current 0.54 MB, +10% cap) | Build artifact size in CI | Web build not run on PRs (OPS-3 / #81) |
+| EQ-5 | Web payload | `main.dart.js` gzip ≤ 0.60 MB (current 0.54 MB, +10% cap) | Build artifact size in CI | Gzipped size reported by the `build-web` job (OPS-3 / #81) |
 | EQ-6 | Determinism | Same seed + inputs ⇒ identical final `GameState`; 100% of engine tests seeded | Seeded tests + replay test | Replay test not written (QE-9 / #77) |
 | EQ-7 | Release defects | 0 open P0/P1 at release | Board labels + QE verification report | Process exists; no defect taxonomy yet |
 

@@ -36,7 +36,7 @@ page because every asset request resolves to the wrong URL.
 |-------------|--------------------|---------|
 | **Local dev** | `flutter run -d chrome` | Fast iteration; not a release artifact |
 | **Local production build** | `flutter build web --release --base-href /bust_a_move_clone/` | Reproduce the exact Pages artifact |
-| **CI** | GitHub Actions on pull requests | Analyze + test gate |
+| **CI** | GitHub Actions on pull requests and pushes to `develop` | Analyze, test, and web build gate |
 | **Production** | GitHub Actions on push to `main` | Player-facing build |
 
 There is currently **no PR preview environment**. A PR is verified through CI,
@@ -48,7 +48,7 @@ tests, and a locally served production build.
 
 ```mermaid
 flowchart LR
-    PR[Pull request] --> CI[CI<br/>analyze + test]
+    PR[Pull request] --> CI[CI<br/>analyze + test + web build]
     CI -->|green + QE verdict| MERGE[Merge to main]
     MERGE --> BUILD[Build web release<br/>base-href /bust_a_move_clone/]
     BUILD --> UPLOAD[Upload Pages artifact]
@@ -60,6 +60,10 @@ flowchart LR
 
 ### CI (pull requests)
 
+Two jobs, run in parallel:
+
+**`analyze-test`**
+
 1. Checkout.
 2. Install Flutter — **pinned** to the version in the **Toolchain baseline** row
    of §1, via `subosito/flutter-action@v2` (`flutter-version`, `cache: true`).
@@ -67,9 +71,25 @@ flowchart LR
 4. `flutter analyze --fatal-infos`.
 5. `flutter test test/`.
 
-**Gap:** CI does not currently build the web release. Add the production build
-as a required PR check so base-href and web-only compile errors are caught
-before merge.
+**`build-web`**
+
+1. Checkout.
+2. Install Flutter — the same pinned version, read from the `FLUTTER_VERSION`
+   env var that both jobs share.
+3. `flutter pub get`.
+4. `flutter build web --release --base-href /bust_a_move_clone/`.
+5. Report sizes to the job summary: `build/web` and `main.dart.js` on disk, plus
+   `main.dart.js` gzipped — the gzip figure is the one EQ-5 in
+   [`docs/product/vision.md`](../product/vision.md) budgets against.
+
+The build command is byte-identical to the one in the deploy workflow below. If
+those two drift, `build-web` stops proving the production build — a base-href
+typo or a web-only compile error would pass PR CI and fail on `main` instead.
+Keep them in step.
+
+The jobs are separate rather than sequential on purpose: a web compile error is
+independent of whether the tests pass, so running them in parallel costs the
+build's wall-clock once instead of adding it to every PR.
 
 ### Deploy (push to `main`)
 
@@ -109,15 +129,23 @@ whatever is current at run time, so the toolchain could change between two runs
 of the same commit. The pin makes a green build mean the same thing tomorrow as
 it did today.
 
-The version appears in **four** places that must agree. Change all of them in
-one commit:
+The version appears in **four** normative files that must agree, plus the
+repo-memory note that records it — five places to change in one commit.
+`ci.yml` defines it once, in a workflow-level `env:` block that both of its jobs
+read, so the two jobs cannot drift onto different toolchains.
 
 | File | What to change |
 |------|----------------|
-| `.github/workflows/ci.yml` | `flutter-version: '<version>'` |
+| `.github/workflows/ci.yml` | `FLUTTER_VERSION` in the workflow-level `env:` block |
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
-| `docs/ops/deployment.md` | The **Toolchain baseline** row in §1 |
+| `docs/ops/deployment.md` | The **Toolchain baseline** row in §1, **and** the illustrative `checkout`/`fvm use` commands in step 3 below |
 | `README.md` | The version in the prerequisites block (prose only) |
+| `memories/repo/facts.md` | The parenthetical under **Gaps** that states the pin — a derived note, not a source of truth, but it goes stale silently if skipped |
+
+Historical mentions (the §11 gap row, the §12 change log, dated quality and
+status reports) record what was true when written and are **not** updated;
+illustrative examples elsewhere (the `channel: beta` example in the Rules
+below, issue templates, dated session notes) are examples, not assertions.
 
 ### Procedure
 
@@ -125,8 +153,8 @@ one commit:
    [Flutter release notes](https://docs.flutter.dev/release/release-notes).
    `flutter --version` reports what is installed *locally*, which is not
    evidence that a different version is available.
-2. Update the version in both workflow files, the baseline row, and the
-   `README.md` prerequisites.
+2. Update every row of the table above — both workflow files, the baseline row,
+   the step 3 commands, the `README.md` prerequisites, and the repo-memory note.
 3. Switch your **local** SDK to the target version, then run the full gate on it.
    Neither `flutter upgrade` nor `flutter downgrade` can target a version —
    `upgrade` moves to newest stable, and `downgrade` only undoes the last
@@ -160,13 +188,15 @@ one commit:
 
 4. Commit as `ci(deps): bump Flutter to <version>` — a `ci`/`deps` scope, so it
    does not bump the release version on its own.
-5. Let CI run. A green `analyze-test` proves the pin for the gate; the deploy
-   workflow only fires on a push to `main`, so the production half of the proof
-   lands at the next release, not on the bump PR. Two CI runs are needed to
-   demonstrate cache reuse: the first populates the cache for the new version,
-   the second hits it.
-6. If the deploy fails, revert the four files together — never leave CI, the
-   deploy workflow, the runbook, and the README disagreeing about the toolchain.
+5. Let CI run. A green `analyze-test` **and** `build-web` proves the pin for the
+   gate. Both jobs read the same `FLUTTER_VERSION`, so they cannot drift onto
+   different toolchains; the deploy workflow only fires on a push to `main`, so
+   the production half of the proof lands at the next release, not on the bump
+   PR. Two CI runs are needed to demonstrate cache reuse: the first populates
+   the cache for the new version, the second hits it.
+6. If the deploy fails, revert the whole table together — never leave CI, the
+   deploy workflow, the runbook, the README, and repo memory disagreeing about
+   the toolchain.
 
 ### Rules
 
@@ -299,6 +329,7 @@ Never leave production in an unverified state.
 | Frame rate | 60 fps minimum | Not measured in production |
 | Input-to-feedback | < 100 ms | Not measured in production |
 | Deploy duration | ≤ 5 min | Build step 14.4 s locally |
+| PR gate wall-clock | ≤ 8 min | 1:07 with both jobs; they run in parallel |
 | Change-failure rate | < 15% | Not tracked |
 
 Measure before tightening. Record regressions as tasks, not anecdotes.
@@ -313,7 +344,7 @@ These are **proposals for user triage**, not Ready tasks.
 |----|-----|----------------|------------------|
 | ~~OPS-1~~ | ~~Flutter version floats on `stable`~~ — **closed**: pinned to 3.47.1 (§5) | Builds could have drifted without a code change | `ci/pin-flutter-version` |
 | OPS-2 | No `workflow_dispatch` for redeploy | Rollback requires a revert PR | `ci/manual-redeploy` |
-| OPS-3 | PR CI does not build the web release | Web compile/base-href errors reach `main` | `ci/build-web-on-pr` |
+| ~~OPS-3~~ | ~~PR CI does not build the web release~~ — **closed**: `build-web` job in `ci.yml` (§3) | Web compile/base-href errors reached `main` | `ci/build-web-on-pr` |
 | OPS-4 | No automated post-deploy smoke test | Verification is manual and easy to skip | `ci/post-deploy-smoke` |
 | OPS-5 | No uptime monitoring | Outages are discovered by players | `ci/uptime-check` |
 | OPS-6 | No Lighthouse/performance gate | Size and load regressions are invisible | `ci/lighthouse-budget` |
@@ -332,3 +363,4 @@ These are **proposals for user triage**, not Ready tasks.
 |------|--------|-------|
 | 2026-10-23 | Initial runbook and production baseline recorded | DevOps Engineer |
 | 2026-10-23 | Toolchain pinned to Flutter 3.47.1 in both workflows; bump procedure added (§5) | DevOps Engineer |
+| 2026-10-23 | PR gate builds the production web bundle in parallel with analyze-test; bundle size (on-disk + gzip) reported to the job summary (§3) | DevOps Engineer |

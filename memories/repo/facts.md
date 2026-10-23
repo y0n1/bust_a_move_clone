@@ -62,9 +62,10 @@ docs/
 - **Last verified deploy:** run 39882358617, commit `4b5d3fe`, version 1.0.0+1.
 - **Quality baseline:** `flutter analyze --fatal-infos` clean; 45 tests pass; production build succeeds.
 - **Sizes:** `main.dart.js` 0.54 MB gzip; `canvaskit.wasm` 2.79 MB gzip; `build/web` 40 MB.
-- **Gaps:** no `v1.0.0` tag; CI does not build web on PR;
-  no automated post-deploy smoke; no uptime monitoring; no cross-browser/a11y/perf evidence.
-  (Flutter is now pinned to 3.47.1 in both workflows — no longer a gap.)
+- **Gaps:** no `v1.0.0` tag; no automated post-deploy smoke; no uptime monitoring;
+  no cross-browser/a11y/perf evidence.
+  (Flutter is now pinned to 3.47.1 in both workflows, and PR CI now builds the
+  web bundle — neither is a gap any more.)
 - **Artifacts:** `docs/ops/deployment.md`, `docs/ops/deployment-log.md`,
   `docs/quality/test-strategy.md`, `docs/quality/release-checklist.md`,
   `docs/quality/reports/2026-10-23-v1.0.0-baseline.md`, `docs/status/2026-10-23-kickoff.md`.
@@ -72,7 +73,8 @@ docs/
   The PM covers product **and** delivery; there is no separate project manager.
 - **Branching:** Gitflow + Conventional Commits — see `docs/decisions/0001-gitflow-and-conventional-commits.md`.
   Task branches cut from `develop`, PRs target `develop`; only `release/*` and
-  `hotfix/*` target `main`. CI (`.github/workflows/ci.yml`, job `analyze-test`)
+  `hotfix/*` target `main`. CI (`.github/workflows/ci.yml`, jobs `analyze-test`
+  and `build-web`)
   runs on PRs into `main`/`develop` and on pushes to `develop` **only** — there
   is no push-to-`main` CI run; the `main` push runs the deploy workflow, which
   builds but does not test.
