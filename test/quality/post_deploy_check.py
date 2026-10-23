@@ -339,8 +339,8 @@ def run(args: argparse.Namespace) -> int:
             # Without a version to compare against this check cannot fail, and
             # a check that cannot fail is not a gate. Refuse rather than pass.
             raise CheckFailure(
-                "no expected version: pass --expect-version or run from a "
-                "checkout whose pubspec.yaml declares one"
+                "no expected version: pass --expect-version, or --repo-root "
+                "pointing at a checkout whose pubspec.yaml declares one"
             )
         status, body, _ = fetch_until(
             base + "version.json",
