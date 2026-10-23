@@ -56,7 +56,10 @@ jobs:
   smoke:
     needs: deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Worst case is bounded: --wait 90 applies per network check (3 of them) plus
+    # up to 90 s for Flutter to boot, so ~6 min of retrying. 15 min leaves room
+    # for checkout, the Chrome launch and artifact upload on a slow runner.
+    timeout-minutes: 15
     # Least privilege: this job only reads the repo and the public site.
     permissions:
       contents: read
@@ -67,6 +70,7 @@ jobs:
         run: |
           python3 test/quality/post_deploy_check.py \
             --url "$DEPLOY_URL" \
+            --wait 90 \
             --artifacts-dir build/post-deploy-artifacts
         env:
           DEPLOY_URL: https://y0n1.github.io/bust_a_move_clone/
