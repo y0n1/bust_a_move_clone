@@ -256,9 +256,10 @@ when QE-1 landed. Every other row is the baseline as measured.
 The smoke timing is a range, not a constant: the suite hunts for a match-3 and
 for a chain reaction on an **unseeded** board, so how long it runs depends on
 how quickly the board cooperates. A run that never sees a chain burns the whole
-chain budget — 101 s end to end, the worst observed — so the shot count, not the
-app, dominates the duration. The default budgets bound it at roughly 120 shots,
-or about 150 s, well inside the script's own five-minute guard.
+chain budget — 101 s end to end with `--no-build`, the worst observed, plus
+about 15 s when the suite builds first — so the shot count, not the app,
+dominates the duration. The default budgets bound it at roughly 120 shots, or
+about 150 s, well inside the script's own five-minute guard.
 
 The chain hunt has its own 80-shot budget rather than sharing the 40 used for
 the match-3 hunt: across nine runs the first chain arrived after 4, 8, 21, 24,
