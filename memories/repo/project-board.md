@@ -52,9 +52,14 @@ gh project item-edit --id <PVTI_id> --project-id PVT_kwHOAEGiN84Bl6Cv \
 
 - New issues are **auto-added** to the project; `gh project item-add` then fails
   with `Content already exists in this project`. Look the item up instead of adding.
+  (`gh project item-add` is idempotent — it returns the existing item ID.)
 - `gh project item-list --limit` and the GraphQL `items` connection can lag /
   truncate after bulk creation. Verify per issue with
   `issue(number:N) { projectItems { ... fieldValueByName(name:"Status") } }`.
+- **2026-10-23:** GitHub incident "Project updates delayed" — newly added items
+  took much longer than expected to appear in `items`/`item-list` while the
+  per-issue `projectItems` query was already correct. Trust the per-issue query
+  during incidents; do not delete/re-add items to "force" indexing (it does not help).
 - Board items are real **Issues** (not draft issues), so they have numbers and URLs.
 
 ## State snapshot — 2026-10-23
