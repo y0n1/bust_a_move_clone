@@ -10,6 +10,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Toolchain is pinned, not floating on a channel, and defined once here so the
+# jobs below cannot drift onto different versions. Bump deliberately:
+# see docs/ops/deployment.md § "Bumping the toolchain".
+env:
+  FLUTTER_VERSION: '3.47.1'
+
 jobs:
   analyze-test:
     runs-on: ubuntu-latest
@@ -17,11 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Toolchain is pinned, not floating on a channel. Bump deliberately:
-      # see docs/ops/deployment.md § "Bumping the toolchain".
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.1'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - run: flutter pub get
@@ -32,9 +36,10 @@ jobs:
       - name: Test
         run: flutter test test/
 
-  # The deploy workflow builds the web bundle; nothing did before this job
-  # existed, so a base-href typo or a `dart:io` import reached `main` before
-  # anyone saw it. The base-href below is byte-identical to the one in
+  # Before this job existed, nothing on the PR gate built the web bundle: the
+  # deploy workflow does build it, but only after a push to `main`. So a
+  # base-href typo or a web-only compile error reached production before anyone
+  # saw it. The base-href below is byte-identical to the one in
   # deploy-pages.yml — if they drift, this job stops proving the real build.
   #
   # Runs in parallel with analyze-test on purpose: a web compile error is
@@ -46,11 +51,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Toolchain is pinned, not floating on a channel. Bump deliberately:
-      # see docs/ops/deployment.md § "Bumping the toolchain".
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.1'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - run: flutter pub get
@@ -60,15 +63,22 @@ jobs:
       - name: Build web (release, production base-href)
         run: flutter build web --release --base-href /bust_a_move_clone/
 
+      # On-disk size answers "how big is the artifact"; gzip answers the payload
+      # budget in the product vision (EQ-5 is a gzip figure). Report both, or
+      # someone reads the raw number against the gzip cap and concludes the
+      # budget is blown. Best-effort: a missing file drops its row, never fails.
       - name: Report bundle size
-        if: success()
         run: |
           {
             echo "### Web bundle"
             echo
-            echo "| Path | Size |"
-            echo "|------|------|"
-            du -sh build/web | awk '{printf "| `build/web` | %s |\n", $1}'
-            du -sh build/web/main.dart.js 2>/dev/null \
-              | awk '{printf "| `main.dart.js` | %s |\n", $1}' || true
+            echo "| Artifact | Size |"
+            echo "|----------|------|"
+            du -sh build/web | awk '{printf "| `build/web` (on disk) | %s |\n", $1}'
+            if [ -f build/web/main.dart.js ]; then
+              du -sh build/web/main.dart.js \
+                | awk '{printf "| `main.dart.js` (on disk) | %s |\n", $1}'
+              gzip -9 -c build/web/main.dart.js | wc -c \
+                | awk '{printf "| `main.dart.js` (gzip) | %.2f MB |\n", $1/1048576}'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

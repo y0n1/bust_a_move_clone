@@ -73,9 +73,10 @@ flowchart LR
     C --> D[deploy-pages@v4] --> E[PLAYER-FACING PRODUCTION]
 ```
 
-No PR, no CI run, no `analyze-test`, no QE verdict — `ci.yml` only listens on
-`pull_request`. A typo or a red test reaches players in one command. The ruleset
-blocks *history-rewriting* accidents (force-push, deletion), not *quality* ones.
+No PR, no CI run, no `analyze-test`, no `build-web`, no QE verdict — `ci.yml`
+only listens on `pull_request`. A typo, a red test, or a broken web build
+reaches players in one command. The ruleset blocks *history-rewriting*
+accidents (force-push, deletion), not *quality* ones.
 
 ## 3. Proposed policy
 
@@ -84,7 +85,7 @@ blocks *history-rewriting* accidents (force-push, deletion), not *quality* ones.
 | Require pull request before merging | ✅ on | Every change to `main` gets a PR, a CI run, and a reviewable diff. |
 | Required approvals | **0** | Solo-maintainer repo — GitHub forbids self-approval, so `1` would deadlock every PR. Revisit when a second collaborator exists. |
 | Dismiss stale approvals | ✅ on | Cheap now, correct the moment approvals become non-zero. |
-| Require status checks — `analyze-test`, `build-web` | ✅ on (strict/up-to-date) | Two CI jobs exist: `analyze-test` and `build-web` in `ci.yml` (verified check-run `name`s; `gh pr checks` renders them `CI/analyze-test` and `CI/build-web`). The first runs `flutter analyze --fatal-infos` + `flutter test test/`; the second runs the production web build. |
+| Require status checks — `analyze-test`, `build-web` | ✅ on (strict/up-to-date) | Two CI jobs exist: `analyze-test` and `build-web` in `ci.yml`. `gh pr checks` renders them as the bare check-run names `analyze-test` and `build-web` — those exact strings are what `contexts` must contain. The first runs `flutter analyze --fatal-infos` + `flutter test test/`; the second runs the production web build. |
 | Require branches to be up to date | ✅ on | Deploy builds the *merge result*; green CI on a stale base proves nothing. Cost is low with ~1 open PR. |
 | Require conversation resolution | ✅ on | Prevents merging with an unanswered QE/review objection. |
 | Block force pushes | ✅ keep on | Already enforced by ruleset `Default`; restating it keeps one authoritative config. |
@@ -163,8 +164,8 @@ involved, log it in `deployment-log.md` with a `ROLLBACK:` prefix.
 |-------|---------|----------|
 | Protection exists | `gh api repos/y0n1/bust_a_move_clone/branches/main/protection` | `200` with the §4.1 payload (no longer `404`) |
 | Ruleset intact | `gh api repos/y0n1/bust_a_move_clone/rules/branches/main` | `deletion` + `non_fast_forward` + new protection rules |
-| Check name matches CI | `gh pr checks <n>` | `analyze-test` shown as required/blocking |
-| PR gate blocks red CI | Push a failing commit to a scratch branch, open PR | Merge button disabled until `analyze-test` passes |
+| Check name matches CI | `gh pr checks <n>` | Both `analyze-test` and `build-web` shown as required/blocking |
+| PR gate blocks red CI | Push a failing commit to a scratch branch, open PR | Merge button disabled until `analyze-test` **and** `build-web` pass |
 | Direct push rejected | From a throwaway clone: commit an empty change on `main` and `git push origin main` | `remote: error: GH006: Protected branch update failed` — nothing lands, since the ref update is refused. **Requires approval to run; `--dry-run` is not a valid test** (no ref update is attempted, so the server may report success). |
 | Admin bypass closed | `gh api repos/y0n1/bust_a_move_clone/rulesets/24729086 --jq .current_user_can_bypass` | `"never"` only if §4.2 is applied; otherwise `"always"` |
 

@@ -36,7 +36,7 @@ page because every asset request resolves to the wrong URL.
 |-------------|--------------------|---------|
 | **Local dev** | `flutter run -d chrome` | Fast iteration; not a release artifact |
 | **Local production build** | `flutter build web --release --base-href /bust_a_move_clone/` | Reproduce the exact Pages artifact |
-| **CI** | GitHub Actions on pull requests | Analyze + test gate |
+| **CI** | GitHub Actions on pull requests | Analyze, test, and web build gate |
 | **Production** | GitHub Actions on push to `main` | Player-facing build |
 
 There is currently **no PR preview environment**. A PR is verified through CI,
@@ -48,7 +48,7 @@ tests, and a locally served production build.
 
 ```mermaid
 flowchart LR
-    PR[Pull request] --> CI[CI<br/>analyze + test]
+    PR[Pull request] --> CI[CI<br/>analyze + test + web build]
     CI -->|green + QE verdict| MERGE[Merge to main]
     MERGE --> BUILD[Build web release<br/>base-href /bust_a_move_clone/]
     BUILD --> UPLOAD[Upload Pages artifact]
@@ -74,15 +74,18 @@ Two jobs, run in parallel:
 **`build-web`**
 
 1. Checkout.
-2. Install Flutter — the same pinned version.
+2. Install Flutter — the same pinned version, read from the `FLUTTER_VERSION`
+   env var that both jobs share.
 3. `flutter pub get`.
 4. `flutter build web --release --base-href /bust_a_move_clone/`.
-5. Report `build/web` and `main.dart.js` sizes to the job summary.
+5. Report sizes to the job summary: `build/web` and `main.dart.js` on disk, plus
+   `main.dart.js` gzipped — the gzip figure is the one EQ-5 in
+   [`docs/product/vision.md`](../product/vision.md) budgets against.
 
 The build command is byte-identical to the one in the deploy workflow below. If
 those two drift, `build-web` stops proving the production build — a base-href
-typo or a `dart:io` import would pass PR CI and fail on `main` instead. Keep
-them in step.
+typo or a web-only compile error would pass PR CI and fail on `main` instead.
+Keep them in step.
 
 The jobs are separate rather than sequential on purpose: a web compile error is
 independent of whether the tests pass, so running them in parallel costs the
@@ -126,12 +129,13 @@ whatever is current at run time, so the toolchain could change between two runs
 of the same commit. The pin makes a green build mean the same thing tomorrow as
 it did today.
 
-The version appears in **four** places that must agree. Change all of them in
-one commit:
+The version appears in **four** files that must agree — one occurrence each,
+because `ci.yml` defines it once in a workflow-level `env:` block that both of
+its jobs read. Change all four in one commit:
 
 | File | What to change |
 |------|----------------|
-| `.github/workflows/ci.yml` | `flutter-version: '<version>'` |
+| `.github/workflows/ci.yml` | `FLUTTER_VERSION` in the workflow-level `env:` block |
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
 | `docs/ops/deployment.md` | The **Toolchain baseline** row in §1 |
 | `README.md` | The version in the prerequisites block (prose only) |
@@ -177,11 +181,12 @@ one commit:
 
 4. Commit as `ci(deps): bump Flutter to <version>` — a `ci`/`deps` scope, so it
    does not bump the release version on its own.
-5. Let CI run. A green `analyze-test` proves the pin for the gate; the deploy
-   workflow only fires on a push to `main`, so the production half of the proof
-   lands at the next release, not on the bump PR. Two CI runs are needed to
-   demonstrate cache reuse: the first populates the cache for the new version,
-   the second hits it.
+5. Let CI run. A green `analyze-test` **and** `build-web` proves the pin for the
+   gate. Both jobs read the same `FLUTTER_VERSION`, so they cannot drift onto
+   different toolchains; the deploy workflow only fires on a push to `main`, so
+   the production half of the proof lands at the next release, not on the bump
+   PR. Two CI runs are needed to demonstrate cache reuse: the first populates
+   the cache for the new version, the second hits it.
 6. If the deploy fails, revert the four files together — never leave CI, the
    deploy workflow, the runbook, and the README disagreeing about the toolchain.
 
@@ -350,3 +355,4 @@ These are **proposals for user triage**, not Ready tasks.
 |------|--------|-------|
 | 2026-10-23 | Initial runbook and production baseline recorded | DevOps Engineer |
 | 2026-10-23 | Toolchain pinned to Flutter 3.47.1 in both workflows; bump procedure added (§5) | DevOps Engineer |
+| 2026-10-23 | PR gate builds the production web bundle in parallel with analyze-test; bundle size (on-disk + gzip) reported to the job summary (§3, §10) | DevOps Engineer |
