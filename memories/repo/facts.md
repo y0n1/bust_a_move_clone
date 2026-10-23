@@ -54,6 +54,21 @@ docs/
 - `Engine.centerOf(row, col)` returns cell center in board-space.
 - `Engine.neighborsOf(row, col)` returns 6 hex-neighbors (handles even/odd offset).
 
+## Production & quality baseline (2026-10-23)
+
+- **Production:** https://y0n1.github.io/bust_a_move_clone/ — GitHub Pages, deployed from `main`.
+- **Deploy workflow:** `.github/workflows/deploy-pages.yml`; **CI:** `.github/workflows/ci.yml`.
+- **Build:** `flutter build web --release --base-href /bust_a_move_clone/`.
+- **Last verified deploy:** run 39882358617, commit `4b5d3fe`, version 1.0.0+1.
+- **Quality baseline:** `flutter analyze --fatal-infos` clean; 45 tests pass; production build succeeds.
+- **Sizes:** `main.dart.js` 0.54 MB gzip; `canvaskit.wasm` 2.79 MB gzip; `build/web` 40 MB.
+- **Gaps:** no `v1.0.0` tag; CI does not build web on PR; Flutter version floats on `stable`;
+  no automated post-deploy smoke; no uptime monitoring; no cross-browser/a11y/perf evidence.
+- **Artifacts:** `docs/ops/deployment.md`, `docs/ops/deployment-log.md`,
+  `docs/quality/test-strategy.md`, `docs/quality/release-checklist.md`,
+  `docs/quality/reports/2026-10-23-v1.0.0-baseline.md`, `docs/status/2026-10-23-kickoff.md`.
+- **Team:** 8 agents in `.github/agents/` (PM, UX, Engine, Flutter, Multiplayer, QE, DevOps, Project Manager).
+
 ## Previous session fixes (2026-10-06)
 
 - **Descent logic inverted** — fixed in `lib/game/engine.dart`:
