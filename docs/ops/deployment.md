@@ -129,9 +129,10 @@ whatever is current at run time, so the toolchain could change between two runs
 of the same commit. The pin makes a green build mean the same thing tomorrow as
 it did today.
 
-The version appears in **four** files that must agree. `ci.yml` defines it once,
-in a workflow-level `env:` block that both of its jobs read, so the two jobs
-cannot drift onto different toolchains. Change all four in one commit:
+The version appears in **four** normative files that must agree, plus the
+repo-memory note that records it — five places to change in one commit.
+`ci.yml` defines it once, in a workflow-level `env:` block that both of its jobs
+read, so the two jobs cannot drift onto different toolchains.
 
 | File | What to change |
 |------|----------------|
@@ -139,6 +140,10 @@ cannot drift onto different toolchains. Change all four in one commit:
 | `.github/workflows/deploy-pages.yml` | `flutter-version: '<version>'` |
 | `docs/ops/deployment.md` | The **Toolchain baseline** row in §1, **and** the illustrative `checkout`/`fvm use` commands in step 3 below |
 | `README.md` | The version in the prerequisites block (prose only) |
+| `memories/repo/facts.md` | The toolchain line — a derived note, not a source of truth, but it goes stale silently if skipped |
+
+Historical mentions (the §11 gap row, the §12 change log, dated quality and
+status reports) record what was true when written and are **not** updated.
 
 ### Procedure
 
@@ -146,8 +151,8 @@ cannot drift onto different toolchains. Change all four in one commit:
    [Flutter release notes](https://docs.flutter.dev/release/release-notes).
    `flutter --version` reports what is installed *locally*, which is not
    evidence that a different version is available.
-2. Update the version in both workflow files, the baseline row, and the
-   `README.md` prerequisites.
+2. Update every row of the table above — both workflow files, the baseline row,
+   the step 3 commands, the `README.md` prerequisites, and the repo-memory note.
 3. Switch your **local** SDK to the target version, then run the full gate on it.
    Neither `flutter upgrade` nor `flutter downgrade` can target a version —
    `upgrade` moves to newest stable, and `downgrade` only undoes the last
@@ -187,8 +192,9 @@ cannot drift onto different toolchains. Change all four in one commit:
    the production half of the proof lands at the next release, not on the bump
    PR. Two CI runs are needed to demonstrate cache reuse: the first populates
    the cache for the new version, the second hits it.
-6. If the deploy fails, revert the four files together — never leave CI, the
-   deploy workflow, the runbook, and the README disagreeing about the toolchain.
+6. If the deploy fails, revert the whole table together — never leave CI, the
+   deploy workflow, the runbook, the README, and repo memory disagreeing about
+   the toolchain.
 
 ### Rules
 
