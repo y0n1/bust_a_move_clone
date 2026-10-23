@@ -1,0 +1,53 @@
+name: Dependency Review
+
+# Gate every change that introduces a third-party package. This is the only check
+# in the pipeline that can say "no" for a reason that has nothing to do with our
+# own code: a new dependency with a known advisory, or one whose licence we
+# cannot ship.
+#
+# `pull_request` workflows are read from the BASE branch, so this file protects
+# every PR opened after it lands — including PRs that never touch it. Read with
+# docs/ops/dependencies.md.
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: the action reads the dependency graph and the diff. It needs
+# no write access to anything, and `pull-requests: write` is deliberately absent
+# because `comment-summary-in-pr` is off — the job summary carries the same
+# information without giving the job the ability to comment on its own PR.
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Threshold choices, stated so the next person does not have to guess:
+      #
+      #   fail-on-severity: moderate — not the action's `low` default. A
+      #   low-severity advisory in a dev-only transitive package turning a PR red
+      #   trains people to re-run until it goes green, which is worse than not
+      #   having the gate. `moderate` is the level worth acting on in a project
+      #   this size.
+      #
+      #   fail-on-scopes: runtime — the default, written out because it is the
+      #   interesting half of the policy: a development-only advisory is reported
+      #   but does not block, since nothing it touches ships in `build/web`.
+      #
+      #   show-patched-versions: true — one extra API call, and it answers the
+      #   only question anyone asks when this fails: which version fixes it.
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate
+          fail-on-scopes: runtime
+          show-patched-versions: true
