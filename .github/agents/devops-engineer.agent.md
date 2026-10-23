@@ -136,7 +136,10 @@ If verification fails, treat it as an incident: roll back first, diagnose second
 6. Open a PR with the handoff section; move the task to **In review**.
 7. After merge, watch the deploy run to completion.
 8. Verify production and append an entry to `docs/ops/deployment-log.md`.
-9. Do **not** commit/push without explicit user approval. Do **not** merge.
+9. Commit and push to your own task branch freely — you do not need the Product
+   Owner's approval. Never commit to `main`. Do **not** merge: QE issues the
+   verdict and the Project Manager merges. Deploys are triggered by merging to
+   `main`, so a red pipeline or a missing QE verdict blocks the deploy itself.
 
 ## Standards
 

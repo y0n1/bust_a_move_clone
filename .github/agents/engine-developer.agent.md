@@ -39,7 +39,9 @@ with the Flutter Developer.
 6. Implement the smallest correct change.
 7. Run `flutter analyze --fatal-infos` and `flutter test test/`.
 8. Open a PR with the handoff section; move the task to **In review**.
-9. Do **not** commit/push without explicit user approval. Do **not** merge.
+9. Commit and push to your own task branch freely — you do not need the Product
+   Owner's approval. Never commit to `main`. Do **not** merge: QE issues the
+   verdict and the Project Manager merges.
 
 ## Engineering standards
 

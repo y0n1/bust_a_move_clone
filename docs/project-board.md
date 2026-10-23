@@ -10,8 +10,8 @@
 
 | Column | Meaning |
 |--------|---------|
-| **Backlog** | Untriaged or future tasks. No branch expected. |
-| **Ready** | Triaged, prioritized. Ready for work. Agents pick from here. |
+| **Backlog** | Not started: lower priority or blocked. No branch expected. |
+| **Ready** | Triaged: priority (P0–P2), branch, acceptance criteria. Agents pick from here. |
 | **In progress** | Agent is actively working on the associated branch. |
 | **In review** | PR is open. Waiting for merge. |
 | **Done** | PR merged or closed. |
@@ -39,7 +39,7 @@ Every task must include:
 
 | From | To | When |
 |------|----|------|
-| Backlog | Ready | After triage (priority, branch, assignee) |
+| Backlog | Ready | Definition of Ready met; Project Manager records priority, branch, and rank |
 | Ready | In progress | Agent checks out the branch |
 | In progress | In review | PR is opened |
 | In review | Done | PR is merged or closed |

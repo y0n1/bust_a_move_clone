@@ -1,7 +1,7 @@
 # Agent Team Charter — Bust-A-Move Clone
 
 > **Status:** Active  
-> **Owner:** y0n1 (Product Owner / final approver)  
+> **Owner:** y0n1 (Product Owner / final override)  
 > **Source of truth for:** team roles, duties, handoffs, agile cadence, decision protocol, versioning.  
 > **Companion docs:** [`AGENTS.md`](../AGENTS.md), [`docs/project-board.md`](project-board.md), [`docs/architecture.md`](architecture.md).
 
@@ -15,8 +15,11 @@ agile product squad. Every piece of work flows through the GitHub Kanban board
 more distinctive** than the original and its competitors — not merely to
 reimplement it.
 
-The user is the **Product Owner**: they triage tasks (priority, branch,
-assignee), approve commits and releases, and settle irreversible decisions.
+The user is the **Product Owner**. They set direction, may override any
+decision, and are consulted on irreversible or high-cost choices. They are **not**
+in the delivery path for routine work: the team triages its own tasks, reviews and
+merges its own pull requests, and the Project Manager owns versioning, tags, and
+releases. The Product Owner is pinged only for decisions that genuinely need them.
 
 ---
 
@@ -37,12 +40,12 @@ assignee), approve commits and releases, and settle irreversible decisions.
 
 | Role | Never |
 |------|-------|
-| PM | Write production code, edit `lib/`, move tasks to **Ready**, commit |
-| UX | Edit `lib/`, dictate engine internals, move tasks to **Ready**, commit |
-| Developers | Invent priorities, move tasks to **Ready**, commit/push without approval, commit to `main` |
-| Quality Engineer | Edit `lib/` or production config, weaken tests, approve without evidence, release without a PASS verdict |
-| DevOps Engineer | Edit `lib/` or tests, weaken quality gates, change production/secrets/billing without approval, deploy unverified |
-| Project Manager | Write product code, move untriaged tasks to **Ready**, release without user approval and QE sign-off |
+| PM | Write production code, edit `lib/`, triage the board, commit |
+| UX | Edit `lib/`, dictate engine internals, triage the board, commit |
+| Developers | Invent priorities outside the team's agreed rank, commit to `main`, self-merge without a QE verdict |
+| Quality Engineer | Edit `lib/` or production config, weaken tests, approve without evidence, release without a PASS verdict, **fix** a defect instead of filing it |
+| DevOps Engineer | Edit `lib/` or tests, weaken quality gates, change production/secrets/billing without approval, deploy unverified, deploy with an open must-fix defect |
+| Project Manager | Write product code, tag or release without a QE PASS, release with an open must-fix defect for that version |
 
 ---
 
@@ -54,8 +57,10 @@ assignee), approve commits and releases, and settle irreversible decisions.
 |----------|:----:|:--:|:--:|:----------:|:-----------:|:---------------:|:-----------:|:----------:|:-----------:|
 | Product vision & feature discovery | A | R | C | C | C | C | I | I | I |
 | Competitive analysis | I | A/R | C | — | — | — | I | I | I |
-| Backlog prioritization (proposal) | A | R | C | C | C | C | C | C | C |
-| Task triage (priority, branch, assignee) | **A/R** | C | C | C | C | C | C | C | C |
+| Backlog prioritization (proposal) | C | R | C | C | C | C | C | C | C |
+| Task triage (priority, branch, assignee) | C | C | C | C | C | C | C | C | **A/R** |
+| Defect intake and filing to the board | I | C | — | — | — | — | **A/R** | C | R |
+| Defect release-blocking decision (must-fix vs postpone) | C | **A/R** | — | — | — | — | C | C | C |
 | UX / design system | I | C | A/R | — | C | — | C | — | I |
 | Technical design / ADRs | A* | C | C | R | R | R | C | C | I |
 | Engine implementation | I | — | — | A/R | C | C | C | — | I |
@@ -64,11 +69,11 @@ assignee), approve commits and releases, and settle irreversible decisions.
 | Tests & quality gates | I | — | — | R | R | R | A/R | C | C |
 | CI/CD & deployment | A* | I | — | C | C | C | C | A/R | C |
 | Production operations & monitoring | I | — | — | — | — | — | C | A/R | I |
-| Release verification & sign-off | A | I | I | C | C | C | A/R | R | C |
+| Release verification & sign-off | C | I | I | C | C | C | A/R | R | C |
 | Board grooming & status | I | C | — | — | — | — | — | — | A/R |
 | Progress reporting | I | C | — | — | — | — | C | C | A/R |
-| Versioning & release | **A** | I | I | C | C | C | C | R | A/R |
-| Commit / merge approval | **A** | — | — | — | — | — | — | — | R |
+| Versioning, tagging & release | I | I | I | C | C | C | C | R | **A/R** |
+| Commit / push / merge | I | — | — | — | — | — | R | — | **A/R** |
 
 \* The user approves only irreversible or high-cost technical decisions; routine
 implementation choices belong to the developers, and routine pipeline changes
@@ -81,7 +86,10 @@ belong to DevOps.
 - **Implementation approach:** the owning developer decides; consult peers at layer boundaries.
 - **Quality verdict / release readiness:** QE decides PASS, CONDITIONAL, or FAIL; the user can override only with recorded risk acceptance.
 - **Infrastructure / deployment approach:** DevOps decides; irreversible or costly changes go to the user.
-- **Sequencing / schedule:** Project Manager decides.
+- **Task triage (priority, branch, assignee):** the team decides; the Project Manager records it. The Product Owner may override at any time.
+- **Commit, push, merge:** the team decides. A PR merges when CI is green and QE has recorded a verdict. No user approval is needed.
+- **Versioning, tags, and releases:** the Project Manager decides and executes, provided the release checklist and quality gates pass.
+- **Defect release-blocking status:** the Product Manager decides whether a defect must be fixed in the current version or postponed.
 - **Irreversible or cross-cutting:** user decides after a one-page ADR.
 
 ---
@@ -92,13 +100,14 @@ belong to DevOps.
 flowchart LR
     A[PM discovery<br/>brief] --> B[UX design<br/>spec]
     B --> C[PM + PMgr<br/>task breakdown]
-    C --> D{User triage<br/>Backlog → Ready}
+    C --> D{Team triage<br/>Backlog → Ready}
     D --> E[Developer<br/>worktree + branch]
     E --> F[Implementation<br/>tests + analyze]
     F --> G[PR + CI<br/>In review]
     G --> H{QE verification<br/>PASS?}
-    H -- no --> E
-    H -- yes --> I{User review<br/>+ merge}
+    H -- no --> Q[QE files defect<br/>+ PMgr triages]
+    Q --> E
+    H -- yes --> I{Team merge<br/>QE verdict + CI green}
     I --> J[PMgr release prep<br/>version + changelog + tag]
     J --> K[DevOps deploy<br/>GitHub Pages]
     K --> L{Production<br/>verified?}
@@ -116,7 +125,7 @@ flowchart LR
 | **Technical plan** | Owning dev | Task body or `docs/decisions/NNNN-<slug>.md` | Files, approach, test plan, risks, dependencies |
 | **Delivery** | Owning dev | Branch + PR + tests | CI green, acceptance criteria met, handoff written |
 | **Verification** | QE | `docs/quality/reports/YYYY-MM-DD-<scope>.md` | All acceptance criteria mapped to evidence; no open P0/P1; verdict PASS (or CONDITIONAL accepted by the user) |
-| **Release prep** | Project Mgr | `CHANGELOG.md`, version bump, tag, release notes | QE PASS, user approves, rollback path documented |
+| **Release prep** | Project Mgr | `CHANGELOG.md`, version bump, tag, release notes | QE PASS, no open must-fix defect, rollback path documented |
 | **Deployment** | DevOps | `docs/ops/deployment-log.md` entry | Deploy workflow green, production smoke test passed, rollback still valid |
 | **Closure** | Project Mgr | Board **Done**, changelog, status report | Production verified or release explicitly cancelled |
 
@@ -126,7 +135,7 @@ flowchart LR
 2. The receiving role may ask **one round** of clarifying questions; unanswered questions become documented assumptions.
 3. A handoff is rejected if it lacks acceptance criteria or a verification plan.
 4. The PM owns *what* and *why*; UX owns *how it feels*; developers own *how it works*; QE owns *whether it is fit to ship*; DevOps owns *how it reaches and stays in production*; Project Manager owns *when* and *how it ships*.
-5. No PR is merged without a QE verification verdict. No release is tagged without a QE **PASS** (or a user-recorded risk acceptance).
+5. No PR is merged without a QE verification verdict and green CI. No release is tagged without a QE **PASS** and no open must-fix defect for that version. The team merges its own PRs; the Project Manager owns the tag.
 6. No deployment is considered complete until DevOps has verified the production URL and recorded the evidence.
 
 ---
@@ -137,8 +146,8 @@ Board reference: [`docs/project-board.md`](project-board.md).
 
 | Column | Meaning | Who moves it |
 |--------|---------|--------------|
-| **Backlog** | Untriaged ideas and future work | PM / Project Mgr may add |
-| **Ready** | Triaged: priority + branch + assignee + acceptance criteria | **User only** |
+| **Backlog** | Not started: lower priority, or blocked | PM / Project Mgr / QE (defects) |
+| **Ready** | Triaged: priority + branch + acceptance criteria | Project Mgr, once DoR is met |
 | **In progress** | Branch checked out, work underway | Developer |
 | **In review** | PR open and QE verification underway | Developer / QE |
 | **Done** | PR merged/closed and, for releases, production verified | Developer / QE / DevOps / Project Mgr |
@@ -146,7 +155,10 @@ Board reference: [`docs/project-board.md`](project-board.md).
 Hard rules:
 
 - **Only Ready tasks are implemented.** No Ready tasks → the team reports the gap and stops.
-- **The user triages.** Agents never invent priority, branch, or assignee.
+- **The team triages.** The Project Manager sets priority, branch, and assignee once DoR is met. The Product Owner may re-prioritise at any time.
+- **Priority uses the project's own scale: P0, P1, P2.** There is no P3 — low-priority work is P2.
+- **Within a priority, board order is the rank:** top to bottom, highest first. When two items share a priority, the one higher on the board is worked first.
+- **Assignee may be blank** while delivery is agent-only. A blank assignee does not block **Ready**.
 - **One task = one worktree = one branch = one PR.**
 - **Never commit to `main`.**
 - **WIP limit:** one active task per developer, three across the team.
@@ -154,6 +166,32 @@ Hard rules:
 - **QE sign-off is required before merge.** The task stays **In review** until the QE verdict is recorded.
 - **Release tasks stay open until DevOps verifies production.** A green deploy workflow alone is not verification.
 - The board is updated as part of delivery, not afterthought.
+
+### Defect flow
+
+A defect is work like any other, with one hard exception: **a must-fix defect for
+the version being released blocks production.**
+
+1. **QE files it immediately.** Every defect found — during review, exploratory
+   testing, or in production — becomes a board issue at the moment it is found,
+   using [`docs/quality/bug-regression-template.md`](quality/bug-regression-template.md).
+   QE never fixes a defect and never holds one back until the end of a report.
+2. **Project Manager is notified and triages.** The Project Manager sets
+   priority, branch, and assignee, links the defect to its parent task or PR,
+   and places it on the board.
+3. **Product Manager decides release impact.** For each defect the Product
+   Manager records one of:
+   - **Must-fix for the current version** — critical: blocks the release.
+   - **Postpone** — ships with the defect recorded in the release notes.
+4. **Release gate.** No production release while a must-fix defect for that
+   version is open. The Project Manager may not tag and DevOps may not deploy
+   until it is fixed and QE has verified the fix.
+5. **Regression test.** The fix ships with a test that failed before it, per
+   the bug regression template.
+
+Severity and release impact are different questions: severity is how bad the
+defect is (QE's call); release impact is whether *this* version can ship with it
+(Product Manager's call).
 
 ### Task shape
 
@@ -179,7 +217,7 @@ A task may enter **Ready** only when all are true:
 - [ ] Acceptance criteria are testable.
 - [ ] UX spec is linked (for any player-facing change).
 - [ ] Technical approach and touched layers are identified.
-- [ ] Priority (P0–P3), upstream branch, and assignee are set by the user.
+- [ ] Priority (P0–P2), upstream branch, and assignee are set by the team (assignee may be blank while delivery is agent-only).
 - [ ] Dependencies and risks are listed.
 - [ ] Test/verification plan exists, including the QE acceptance checks.
 - [ ] Release impact is identified: does this ship to production, and what is the rollback path?
@@ -192,7 +230,7 @@ A task may enter **Ready** only when all are true:
 - [ ] `flutter analyze --fatal-infos` is clean.
 - [ ] UX spec fidelity verified for player-facing work.
 - [ ] QE verification report written; verdict **PASS** (or CONDITIONAL accepted by the user).
-- [ ] No open P0/P1 defects; P2s documented and accepted.
+- [ ] No open must-fix defect for the current version; postponed defects recorded in the release notes.
 - [ ] Architecture/docs/ADR updated; `docs/ops/` updated for infrastructure changes.
 - [ ] PR reviewed and merged; board moved to **Done**.
 - [ ] `CHANGELOG.md` entry added for user-facing changes.
@@ -256,7 +294,7 @@ Use `docs/decisions/NNNN-<slug>.md` (ADR):
 ## 9. Cadence & reporting
 
 - **Iteration:** one week (adjustable by the user).
-- **Planning:** Project Manager proposes the next Ready tasks in priority order; user confirms.
+- **Planning:** Project Manager proposes the next Ready tasks in priority order and confirms them with the team; the Product Owner may override.
 - **Async standup:** on request, Project Manager writes `docs/status/standup-YYYY-MM-DD.md`.
 - **Review:** demoable build + acceptance-criteria checklist + QE verdict + production health.
 - **Quality gate:** QE writes a verification report for every release candidate; the verdict is a release input, not a formality.
@@ -301,13 +339,14 @@ Use `docs/decisions/NNNN-<slug>.md` (ADR):
 - **Tags:** `vMAJOR.MINOR.PATCH` (e.g., `v0.2.0`).
 - **Roadmap:** `docs/releases/roadmap.md`.
 - **Release notes:** `docs/releases/release-notes/vX.Y.Z.md`.
-- **Cadence:** end of iteration or on demand; the user approves every release.
+- **Cadence:** end of iteration or on demand. **The Project Manager owns versioning, tagging, and releases** and executes them without seeking approval, provided the release checklist and quality gates pass.
 
 ### Release checklist
 
 - [ ] All release-scope tasks are **Done** and QE-verified.
 - [ ] CI green on `main` (analyze + tests + production web build).
 - [ ] QE release report is **PASS** (or CONDITIONAL accepted in writing by the user).
+- [ ] No open must-fix defect for this version; the Product Manager's release-impact call is recorded.
 - [ ] `CHANGELOG.md` updated; version bumped in `pubspec.yaml`.
 - [ ] Tag created; GitHub Release published with notes.
 - [ ] DevOps deploy workflow green; deployed commit matches the tag.
@@ -322,6 +361,7 @@ Use `docs/decisions/NNNN-<slug>.md` (ADR):
 |------|-------|----------------|--------|
 | **CI** | DevOps / developers | Analyze clean, tests pass, production build succeeds | Merge |
 | **Acceptance** | QE | Every acceptance criterion mapped to evidence | Merge / release |
+| **Release-blocking defects** | QE + Product Mgr | No open must-fix defect for the version; postponed ones recorded | Release |
 | **Regression** | QE | Critical-path smoke suite passes | Release |
 | **Compatibility** | QE | Chrome, Firefox, Safari, Edge + desktop/mobile viewports | Release |
 | **Accessibility** | QE | WCAG 2.1 AA checks pass; color is never the only cue | Release |
@@ -330,7 +370,9 @@ Use `docs/decisions/NNNN-<slug>.md` (ADR):
 | **Security** | DevOps | Least-privilege permissions, no exposed secrets, no known critical vulns | Release |
 
 A gate may be waived only by the **user**, in writing, with the risk recorded
-in the release notes. QE and DevOps never waive their own gates.
+in the release notes. QE and DevOps never waive their own gates. The team never
+waives the release-blocking-defect gate; only the Product Owner can override it,
+in writing.
 
 ---
 
@@ -383,10 +425,12 @@ memories/                Persistent cross-session knowledge
 
 ## 13. Guardrails
 
-- No commits or pushes without explicit user approval.
-- No direct commits to `main`.
+- No direct commits to `main`. All work lands through a pull request.
+- The team commits, pushes, reviews, and merges its own PRs once CI is green and QE has recorded a verdict. Routine merges need no user approval.
 - No implementation without a **Ready** task.
-- No invented triage.
+- No triage outside the project's P0–P2 scale; no invented priorities. The team triages and records it.
+- No production release with an open must-fix defect for that version.
+- No tag or release outside the Project Manager's release process.
 - No Flutter imports in `lib/game/`.
 - No non-deterministic randomness in the engine.
 - No business rules in widgets; Views never call `Engine` directly.
@@ -406,7 +450,7 @@ memories/                Persistent cross-session knowledge
 3. **QE** publishes the test strategy and a baseline verification report for the current build.
 4. **DevOps** publishes the deployment runbook, production health baseline, and first deployment-log entry.
 5. **Project Manager** publishes the roadmap and a triage proposal covering product, quality, and platform work.
-6. **User** triages tasks into **Ready** (priority, branch, assignee).
+6. **Project Manager** triages tasks into **Ready** (priority, branch, assignee) with the team; the Product Owner may override.
 7. **Developers** pick Ready tasks in priority order, one worktree per task.
 8. **QE** verifies each PR; **DevOps** deploys and verifies each release; **Project Manager** reports progress and prepares the next release.
 

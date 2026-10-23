@@ -94,9 +94,11 @@ The project is delivered by an eight-role AI team. Read the charter before actin
 | DevOps Engineer | `.github/agents/devops-engineer.agent.md` | `.github/workflows/`, `docs/ops/`, production |
 | Project Manager | `.github/agents/project-manager.agent.md` | board, `CHANGELOG.md`, `docs/releases/`, `docs/status/` |
 
-**Team rules:** only **Ready** tasks are implemented; only the **user** triages
-(priority, branch, assignee); one task = one worktree = one branch = one PR;
-no commits without approval; no direct commits to `main`. PM/UX/QE/DevOps/PMgr
+**Team rules:** only **Ready** tasks are implemented; the **team triages**
+(priority P0–P2, branch, assignee) and the Project Manager records it; one task =
+one worktree = one branch = one PR; the team reviews and merges its own PRs once
+CI is green and QE has a verdict; no direct commits to `main`; the **Project
+Manager owns versioning, tags, and releases**. PM/UX/QE/DevOps/PMgr
 never write production code. QE signs off before merge and release; DevOps
 verifies every production deploy and owns rollback.
 
@@ -164,11 +166,13 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 - Do **not** add Riverpod / Provider — plain `ChangeNotifier` until DI becomes painful.
 - Do **not** use non-deterministic randomness in the engine.
 - Do **not** implement anything without a **Ready** board task.
-- Do **not** invent task priority, branch, or assignee — only the user triages.
+- Do **not** triage outside the project's **P0–P2** scale — there is no P3. Within a priority, board order top-to-bottom is the rank.
 - Do **not** let PM, UX, QE, DevOps, or Project Manager roles edit `lib/`.
-- Do **not** merge without a QE verdict, or release without a QE **PASS**.
+- Do **not** merge without a QE verdict and green CI, or release without a QE **PASS**.
 - Do **not** deploy without a green pipeline and post-deploy production verification.
 - Do **not** weaken, skip, or silence quality gates to hit a date.
-- Do **not** commit, push, tag, or release without explicit user approval.
+- Do **not** release with an open **must-fix** defect for the version.
+- Do **not** tag or release outside the Project Manager's release process.
+- Do **not** commit directly to `main`; all work lands through a pull request.
 - Do **not** re-litigate a recorded ADR without new evidence.
 - Do **not** skip reading `/memories/` at session start.
