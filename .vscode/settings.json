@@ -1,14 +1,82 @@
 {
-    "chat.tools.terminal.autoApprove": {
-        "/^cd /home/y0n1/Projects/bust_a_move_clone/build/web && python3 -m http\\.server 8400 &$/": {
-            "approve": true,
-            "matchCommandLine": true
+    "vllm-copilot.models": [
+        {
+            "id": "Nemotron 3.5 Super",
+            "vllmModelId": "Nemotron-3.5-Super-VL-120B-A12B-Q4_K_M",
+            "server": "llama-router",
+            "contextWindow": 131072,
+            "capabilities": {
+                "toolCalling": true,
+                "imageInput": true
+            },
+            "maxOutputTokens": [
+                32768,
+                20480,
+                8192,
+                4096
+            ],
+            "estimateCharsPerToken": 3.5,
+            "streamInactivityTimeout": 0,
+            "initialResponseTimeoutMs": 600000,
+            "autoContinueRetries": 1,
+            "modelModes": {}
         },
-        "/^git fetch origin && git checkout main && git pull origin main$/": {
-            "approve": true,
-            "matchCommandLine": true
+        {
+            "id": "Nemotron 3 Nano Omni",
+            "vllmModelId": "nemotron-3-nano-omni-30b-a3b-reasoning",
+            "server": "llama-router",
+            "contextWindow": 131072,
+            "capabilities": {
+                "toolCalling": true,
+                "imageInput": true
+            },
+            "maxOutputTokens": [
+                32768,
+                20480,
+                8192,
+                4096
+            ],
+            "estimateCharsPerToken": 3.5,
+            "streamInactivityTimeout": 0,
+            "initialResponseTimeoutMs": 600000,
+            "autoContinueRetries": 1,
+            "modelModes": {}
         },
-        "ddgr": true,
-        "flutter": true
-    }
+        {
+            "vllmModelId": "rits/deepseek-ai/DeepSeek-V4.1-Flash-1017",
+            "displayName": "DeepSeek V4.1 Flash",
+            "family": "deepseek_v41",
+            "maxOutputTokens": [
+                32768,
+                131072,
+                65536,
+                16384
+            ],
+            "capabilities": {
+                "toolCalling": true,
+                "imageInput": true
+            },
+            "modelModes": {
+                "Think (Max)": {
+                    "reasoning_effort": "max",
+                    "temperature": 1,
+                    "top_p": 0.95
+                },
+                "Think (High)": {
+                    "reasoning_effort": "xhigh",
+                    "temperature": 1,
+                    "top_p": 0.95
+                },
+                "No Think": {
+                    "reasoning_effort": "none",
+                    "temperature": 1,
+                    "top_p": 1
+                }
+            },
+            "defaultMode": "Think (High)",
+            "id": "rits/deepseek-ai/DeepSeek-V4.1-Flash-1017 on enmaas",
+            "server": "enmaas",
+            "contextWindow": 262144
+        }
+    ],
 }

@@ -43,8 +43,14 @@ Read the section that matches your task. Each links to the authoritative source.
 | Entry point | `lib/main.dart` | `MaterialApp` → start screen |
 | Domain model | `lib/game/model.dart` | `BubbleColor`, `Bubble`, `Projectile`, `GameState`, `GameStatus` |
 | Game engine | `lib/game/engine.dart` | Hex-grid, board gen, aiming, shooting, collision, match-3 pop, chain reactions, detached-cluster drop, wall descent, scoring, win/lose |
-| UI | `lib/ui/game_screen.dart` | `CustomPainter` canvas, pointer input, 60 Hz ticker, HUD |
+| Start ViewModel | `lib/start_screen/viewmodel/start_screen_viewmodel.dart` | Creates a fresh `GameViewModel` per session |
+| Start View | `lib/start_screen/start_screen.dart` | Title, PLAY button, instructions |
+| Game ViewModel | `lib/gameplay/viewmodel/game_viewmodel.dart` | Owns `Engine` + `GameState`, 60 Hz `Ticker`, aim/fire/restart, juice FX state, layout math |
+| Game View | `lib/gameplay/ui/game_screen.dart` | Thin `ChangeNotifier` listener: `CustomPaint`, pointer input, HUD, status overlay |
+| Renderer | `lib/gameplay/ui/renderer/bubble_renderer.dart` | `GamePainter` + juice types (`ScorePopup`, `Particle`, `ParticleBurst`) |
+| HUD | `lib/gameplay/ui/hud/` | `ScoreDisplay`, `LevelDisplay` |
 | Tests | `test/engine_test.dart`, `test/descent_test.dart` | Headless engine tests (no Flutter) |
+| ViewModel tests | `test/gameplay/viewmodel/`, `test/start_screen/viewmodel/` | ViewModel behavior without widgets |
 
 ### C. Board Geometry (Engine Cheat-Sheet)
 
@@ -60,7 +66,10 @@ Read the section that matches your task. Each links to the authoritative source.
 - Domain layer (`lib/game/`) is **pure Dart** — no Flutter imports. Tests must run headlessly.
 - Engine returns **new `GameState`** snapshots per mutation; UI replaces wholesale. No `setState` gymnastics.
 - Use `math.Random` for all randomness — tests are seeded and deterministic.
-- No Riverpod / Provider yet; add only when the app grows beyond a single screen.
+- MVVM layering: **View** (`*_screen.dart`) is dumb and only listens/forwards input; **ViewModel** (`*/viewmodel/*_viewmodel.dart`) owns state, ticker, and calls into the engine. Views never call `Engine` directly.
+- ViewModels extend `ChangeNotifier`; Views subscribe with `addListener`/`removeListener` and `setState`.
+- No Riverpod / Provider — plain `ChangeNotifier` is enough until dependency injection becomes painful.
+- Feature-first folders: `lib/gameplay/` and `lib/start_screen/`, each with `ui/` + `viewmodel/`.
 - Assets (sprites, sounds, fonts) go in `assets/` + declared in `pubspec.yaml` when the art pass lands.
 
 ---
@@ -74,7 +83,6 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 | Path | Purpose |
 |------|---------|
 | `docs/bust_a_move_spec.md` | Original game design specification (immutable source) |
-| `docs/architecture.md` | App architecture: MVVM, layered logic, feature folders |
 | `AGENTS.md` (this file) | Schema — the contract for how agents operate here |
 | `memories/` | Persistent notes (see below) |
 
