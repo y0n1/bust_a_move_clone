@@ -51,6 +51,7 @@ flowchart LR
     PR[Pull request] --> CI[CI<br/>analyze + test + web build]
     CI -->|green + QE verdict| MERGE[Merge to main]
     MERGE --> BUILD[Build web release<br/>base-href /bust_a_move_clone/]
+    MANUAL[Manual dispatch<br/>emergency redeploy] --> BUILD
     BUILD --> UPLOAD[Upload Pages artifact]
     UPLOAD --> DEPLOY[Deploy to GitHub Pages]
     DEPLOY --> VERIFY[Post-deploy verification]
@@ -91,9 +92,13 @@ The jobs are separate rather than sequential on purpose: a web compile error is
 independent of whether the tests pass, so running them in parallel costs the
 build's wall-clock once instead of adding it to every PR.
 
-### Deploy (push to `main`)
+### Deploy (push to `main`, or on demand)
 
-1. Checkout the merged commit.
+Triggered by a push to `main`, or by `workflow_dispatch` for an emergency
+redeploy of any ref (§7).
+
+1. Checkout the commit being deployed — `github.sha` on a push, the `ref` input
+   on a manual run.
 2. Install Flutter — the **same pinned version** as CI.
 3. `flutter pub get`.
 4. `flutter build web --release --base-href /bust_a_move_clone/`.
@@ -103,8 +108,14 @@ build's wall-clock once instead of adding it to every PR.
    `test/quality/post_deploy_check.py` against the production URL and fails the
    workflow if it is unhealthy (§6.1).
 
+Permissions are granted per job, not per workflow: the workflow declares only
+`contents: read`, and `pages: write` + `id-token: write` are scoped to the
+`deploy` job — the only one that calls the Pages API. `build` and `smoke` run
+read-only.
+
 Only one deployment runs at a time. In-flight production deploys are never
-cancelled.
+cancelled, and a manual run joins the same `pages` concurrency group, so a
+rollback cannot overlap a release deploy.
 
 ---
 
@@ -311,18 +322,58 @@ remains the single source of truth.
 4. Merge; the deploy workflow redeploys automatically.
 5. Run the post-deploy verification and log the rollback entry.
 
-### Emergency rollback
+### Emergency rollback — deploy a known-good ref by hand
 
-If a revert cannot be merged quickly, the user may authorize a manual
-redeploy of the last known-good artifact. **This requires explicit user
-approval** and a deployment-log entry explaining why the normal path was
-bypassed.
+`deploy-pages.yml` accepts `workflow_dispatch`, so any commit, tag or branch can
+be deployed without touching `main`. Use this when production is broken and a
+revert PR cannot be merged in time.
 
-### Current limitation
+**Pass the target in `-f ref=`, never in `--ref`.** The two look alike and do
+different things: `--ref` chooses the *branch the workflow runs on* and the
+Pages OIDC token records it, while the `ref` input chooses the *commit that gets
+built*. Keeping the workflow on `main` keeps the deploy authorised.
 
-`deploy-pages.yml` only triggers on a push to `main`; there is no
-`workflow_dispatch` input for redeploying an arbitrary ref. Adding one is a
-proposed DevOps task (see §11).
+```bash
+# 1. Pick the known-good commit from docs/ops/deployment-log.md
+GOOD=4b5d3fe0316f9c8c329fa485990dc6cb393a8f87
+
+# 2. Deploy it. --ref main = run the workflow from the default branch.
+gh workflow run deploy-pages.yml \
+  --ref main \
+  -f ref="$GOOD" \
+  -f reason="rollback: SEV1 <symptom>"
+
+# 3. Watch it: build -> deploy -> smoke.
+RUN=$(gh run list --workflow=deploy-pages.yml --limit 1 \
+        --json databaseId -q '.[0].databaseId')
+gh run watch "$RUN"
+
+# 4. Confirm the live version is the one you deployed.
+curl -s https://y0n1.github.io/bust_a_move_clone/version.json
+```
+
+Then:
+
+- Confirm `smoke` passed. It reads `pubspec.yaml` **from the deployed ref**, so a
+  rollback expects that ref's version — not the version `main` currently claims.
+- Log the rollback in [`deployment-log.md`](deployment-log.md), prefixed
+  `ROLLBACK:`, naming the bad commit, the good commit and the reason.
+- **Still open the revert PR.** The redeploy is a stopgap: `main` still contains
+  the bad commit, so the next push to `main` redeploys the breakage.
+
+#### How a manual run is distinguishable
+
+- Run name reads `MANUAL deploy of <ref> — <reason>` instead of `Deploy <sha>`.
+- The `build` job writes a **Deploy source** table to the run summary (trigger,
+  workflow ref, deployed ref, actor, reason) and emits a `Manual deploy`
+  warning annotation.
+
+#### First use requires a merge to `main`
+
+GitHub only exposes `workflow_dispatch` for a workflow whose default-branch copy
+has the trigger. Until this change reaches `main`, `gh workflow run` reports that
+no workflow matches. The trigger becomes usable the moment the next release
+lands — no other setup step.
 
 ---
 
@@ -391,7 +442,7 @@ These are **proposals for user triage**, not Ready tasks.
 | ID | Gap | Why it matters | Suggested branch |
 |----|-----|----------------|------------------|
 | ~~OPS-1~~ | ~~Flutter version floats on `stable`~~ — **closed**: pinned to 3.47.1 (§5) | Builds could have drifted without a code change | `ci/pin-flutter-version` |
-| OPS-2 | No `workflow_dispatch` for redeploy | Rollback requires a revert PR | `ci/manual-redeploy` |
+| ~~OPS-2~~ | ~~No `workflow_dispatch` for redeploy~~ — **closed**: `workflow_dispatch` with an explicit `ref` input; manual runs are labelled in the run name and summary, and `pages: write` is scoped to the `deploy` job (§3, §7) | Rollback requires a revert PR | `ci/manual-redeploy` |
 | ~~OPS-3~~ | ~~PR CI does not build the web release~~ — **closed**: `build-web` job in `ci.yml` (§3) | Web compile/base-href errors reached `main` | `ci/build-web-on-pr` |
 | ~~OPS-4~~ | ~~No automated post-deploy smoke test~~ — **closed**: `smoke` job in `deploy-pages.yml` runs `test/quality/post_deploy_check.py` against the live URL after every deploy (§6.1) | Verification was manual and easy to skip | `ci/post-deploy-smoke` |
 | OPS-5 | No uptime monitoring | Outages are discovered by players | `ci/uptime-check` |
@@ -413,3 +464,4 @@ These are **proposals for user triage**, not Ready tasks.
 | 2026-10-23 | Toolchain pinned to Flutter 3.47.1 in both workflows; bump procedure added (§5) | DevOps Engineer |
 | 2026-10-23 | PR gate builds the production web bundle in parallel with analyze-test; bundle size (on-disk + gzip) reported to the job summary (§3) | DevOps Engineer |
 | 2026-10-23 | Automated post-deploy verification: `smoke` job + `test/quality/post_deploy_check.py` assert live HTTP 200, released version, real PNG icons, reachable start screen and a clean console (§6.1). Closes OPS-4 | DevOps Engineer |
+| 2026-10-23 | `workflow_dispatch` with an explicit `ref` input for emergency redeploys and rollback; manual runs labelled in the run name and summary; `pages: write`/`id-token: write` scoped to the `deploy` job only (§3, §7). Closes OPS-2 | DevOps Engineer |

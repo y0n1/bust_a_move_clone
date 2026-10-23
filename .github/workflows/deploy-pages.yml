@@ -1,16 +1,41 @@
 name: Deploy to GitHub Pages
 
+# Manual runs are labelled in the Actions run list, so a rollback is never
+# mistaken for a normal release deploy. `inputs` is empty on push events.
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch'
+      && format('MANUAL deploy of {0}{1}', inputs.ref,
+                inputs.reason != '' && format(' — {0}', inputs.reason) || '')
+      || format('Deploy {0}', github.sha) }}
+
 on:
   push:
     branches: [main]
 
-# Sets permissions for the GITHUB_TOKEN to publish to GitHub Pages
+  # Emergency redeploy / rollback. See docs/ops/deployment.md §7.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: >-
+          Commit SHA, tag or branch to deploy. Use a commit SHA to roll back.
+        required: true
+        default: main
+        type: string
+      reason:
+        description: >-
+          Why this manual deploy is running. Shown in the run name and summary.
+        required: false
+        default: ''
+        type: string
+
+# Workflow-level permissions are the floor, not the ceiling. Only the job that
+# talks to the Pages API asks for more; `build` and `smoke` stay read-only.
+# deploy-pages requires `pages: write` + `id-token: write` on the deploying job.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Allow only one concurrent deployment, skip in-progress runs on the same branch
+# Allow only one concurrent deployment. Manual runs share this group, so a
+# rollback can never overlap an in-flight release deploy.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -20,6 +45,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Push: deploy exactly the commit that landed. Manual: deploy the ref
+          # the operator asked for — that is how rollback works.
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+
+      - name: Record what this run is deploying
+        env:
+          TRIGGER: ${{ github.event_name }}
+          WORKFLOW_REF: ${{ github.ref }}
+          REQUESTED_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          ACTOR: ${{ github.actor }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          # `|` would break the markdown table if an operator typed one.
+          reason_safe="${REASON//|/\\|}"
+          {
+            echo "### Deploy source"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Trigger | \`${TRIGGER}\` |"
+            echo "| Workflow ref | \`${WORKFLOW_REF}\` |"
+            echo "| Deployed ref | \`${REQUESTED_REF}\` |"
+            echo "| Requested by | @${ACTOR} |"
+            if [ -n "${reason_safe}" ]; then
+              echo "| Reason | ${reason_safe} |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${TRIGGER}" = "workflow_dispatch" ]; then
+            echo "::warning title=Manual deploy::This run was started by hand, not by a push to main. Requested ref: ${REQUESTED_REF}"
+          fi
 
       # Toolchain is pinned, not floating on a channel. Bump deliberately:
       # see docs/ops/deployment.md § "Bumping the toolchain".
@@ -41,7 +97,13 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    # The only job that needs to write to Pages. deploy-pages requires both.
+    permissions:
+      pages: write
+      id-token: write
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
@@ -64,12 +126,23 @@ jobs:
     permissions:
       contents: read
     steps:
+      # The checker is infrastructure, not the thing being verified: run the
+      # current copy from the workflow ref, so a rollback to a commit that
+      # predates this script still gets verified.
       - uses: actions/checkout@v4
+
+      # ...but the expected version must come from the ref that was deployed,
+      # which on a manual run is not the ref the workflow runs from.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          path: deployed-ref
 
       - name: Verify the deployed site
         run: |
           python3 test/quality/post_deploy_check.py \
             --url "$DEPLOY_URL" \
+            --repo-root deployed-ref \
             --wait 90 \
             --artifacts-dir build/post-deploy-artifacts
         env:

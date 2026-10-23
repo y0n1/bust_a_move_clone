@@ -298,7 +298,7 @@ def check_browser(url: str, chrome_path: str, headed: bool,
 
 def run(args: argparse.Namespace) -> int:
     base = args.url if args.url.endswith("/") else args.url + "/"
-    repo_root = os.path.abspath(
+    repo_root = args.repo_root or os.path.abspath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
     )
     expected = args.expect_version or pubspec_version(repo_root)
@@ -339,8 +339,8 @@ def run(args: argparse.Namespace) -> int:
             # Without a version to compare against this check cannot fail, and
             # a check that cannot fail is not a gate. Refuse rather than pass.
             raise CheckFailure(
-                "no expected version: pass --expect-version or run from a "
-                "checkout whose pubspec.yaml declares one"
+                "no expected version: pass --expect-version, or --repo-root "
+                "pointing at a checkout whose pubspec.yaml declares one"
             )
         status, body, _ = fetch_until(
             base + "version.json",
@@ -484,6 +484,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--expect-version", default=None,
                         help="released version to require in version.json "
                              "(default: read from pubspec.yaml)")
+    parser.add_argument("--repo-root", default=None,
+                        help="checkout to read pubspec.yaml from, for the "
+                             "default --expect-version (default: this script's "
+                             "repository root). A rollback deploys a different "
+                             "ref than the workflow runs from, so it must point "
+                             "at the deployed ref or the version check compares "
+                             "against the wrong release.")
     parser.add_argument("--wait", type=float, default=DEFAULT_WAIT_S,
                         help=f"seconds to keep retrying network checks while "
                              f"Pages propagates (default: {DEFAULT_WAIT_S:.0f})")
