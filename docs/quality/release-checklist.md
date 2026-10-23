@@ -1,8 +1,9 @@
 # Release Checklist — Bust-A-Move Clone
 
 > **Owner:** Quality Engineer  
-> **Use:** Every release candidate, before the Project Manager tags and DevOps deploys.  
-> **Companion:** [`test-strategy.md`](test-strategy.md), [`../ops/deployment.md`](../ops/deployment.md)
+> **Use:** Every release candidate, before the PM cuts `release/x.y.z`, tags, and DevOps deploys.  
+> **Companion:** [`test-strategy.md`](test-strategy.md), [`../ops/deployment.md`](../ops/deployment.md),
+> [`../decisions/0001-gitflow-and-conventional-commits.md`](../decisions/0001-gitflow-and-conventional-commits.md)
 
 ---
 
@@ -20,12 +21,14 @@
 
 ## 1. Pre-flight
 
-- [ ] All release-scope tasks are **Done** and QE-verified.
+- [ ] All release-scope tasks are **Done** and QE-verified **post-merge on `develop`**.
 - [ ] `CHANGELOG.md` updated for every user-facing change.
-- [ ] Version bumped in `pubspec.yaml` (SemVer).
+- [ ] Version **derived from the Conventional Commits history** since the last tag
+      (`git log --oneline $(git describe --tags --abbrev=0)..HEAD`) and bumped in
+      `pubspec.yaml`.
 - [ ] Release notes drafted in `docs/releases/release-notes/vX.Y.Z.md`.
 - [ ] Rollback target identified (last known-good commit/tag).
-- [ ] No open P0/P1 defects in scope.
+- [ ] No open Critical/High defects in scope.
 
 ## 2. Build and CI
 
@@ -79,6 +82,10 @@
 
 ## 7. Deployment readiness
 
+- [ ] `release/x.y.z` branch cut from `develop` containing only the version bump
+      and `CHANGELOG.md`.
+- [ ] `release/x.y.z` merged into `main` with a merge commit (not squash) and
+      tagged `vX.Y.Z` on that merge commit.
 - [ ] Deploy workflow is green on `main` after merge.
 - [ ] `version.json` matches the release version.
 - [ ] Production URL returns HTTP 200.
@@ -87,6 +94,7 @@
 - [ ] Service worker updates to the new build.
 - [ ] Rollback path verified with DevOps.
 - [ ] `docs/ops/deployment-log.md` entry prepared.
+- [ ] `main` **back-merged into `develop`**; `release/x.y.z` deleted.
 
 ## 8. Verdict
 

@@ -93,3 +93,92 @@ deployment log; repo board memory. Plus 8 new docs from the agent runs.
 2. **`v1.0.0` tag** — now the Project Manager's to create, but the release gate
    (QE PASS + no must-fix defect) has not been run.
 3. **Vision Q1–Q9** — nine product questions in `docs/product/vision.md`.
+
+---
+
+## Phase 5 — Governance corrections (2026-10-23, continued)
+
+Five corrections from the Product Owner, applied on top of Phase 4 before the
+branch was pushed.
+
+### 1. Merge the two manager roles into one PM
+
+The owner asked to "merge the program and project manager duties into the product
+manager role" and call them **PMs**. No *program* manager existed — the team had
+a **Product Manager** and a **Project Manager**. Interpreted as merging those two
+into a single **Product Manager (PM)**. The team went from **8 roles to 7**;
+`.github/agents/project-manager.agent.md` was deleted (`git rm`).
+
+### 2. Triage is split, not shared
+
+Correction: "branch and assignee assignment is a devops task, PM must not be
+involved." So:
+
+- **PM** → priority (P0–P2) and rank only.
+- **DevOps** → branch and assignee only.
+
+Neither does the other's half; the PM is not consulted on branches or assignees.
+Encoded in charter §2/§3/§4/§6, the PM agent (duty 8), the DevOps agent (new
+Duty 1), and the board docs.
+
+### 3. "commits, reviews, pushes, and merges their own PRs"
+
+The team rule now includes **reviews**. Merge bar = CI green + one peer review.
+No user approval, no QE verdict required to merge.
+
+### 4. QE validates *after* the merge, E2E first
+
+"PRs merged trigger QE work... passing criteria must exercise first E2E
+validation of the feature or bug-fix."
+
+- A merged PR is **unverified**. It stays **In review** until QE passes it.
+- QE is the only role that moves a task to **Done**.
+- QE's loop is: build the artifact → play the real path → watch for collateral
+  damage → *then* read the diff → *then* map acceptance criteria to evidence.
+- "The unit tests pass" is explicitly **not** end-to-end evidence.
+
+**Reconciliation:** the owner said "as they land into the main branch", but
+Gitflow routes feature PRs to `develop`. Resolution: QE validates on the PR's
+**target branch** — `develop` for features/fixes/docs/ci, `main` for
+`release/*` and `hotfix/*`. This satisfies both statements.
+
+### 5. Gitflow + Conventional Commits
+
+New ADR: `docs/decisions/0001-gitflow-and-conventional-commits.md` (status
+`accepted`).
+
+- `main` = production, deploys on push. `develop` = integration, QE validates here.
+- Task branches cut from `develop`, PRs target `develop`.
+- `release/<version>` and `hotfix/<version>` are the only branches that target
+  `main`, and both are **back-merged into `develop`** in the same session.
+- Commits: `type(scope): description`; `feat`→MINOR, `fix`/`perf`→PATCH,
+  `!` + `BREAKING CHANGE:`→MAJOR. Scopes: engine, ui, hud, renderer, viewmodel,
+  start, ci, docs, board, deps.
+- The PM **derives** the release version from the commit history. If it does not
+  match intent, fix the commits — never hand-edit the version.
+
+### Unplanned: three colliding "P" scales
+
+Rewriting the QE agent surfaced three different things all called P0–P3. Fixed:
+
+| Scale | Owner | Now called |
+|-------|-------|-----------|
+| Board scheduling | PM | **P0–P2** (unchanged) |
+| Defect severity | QE | **Critical / High / Medium / Low** |
+| Browser test coverage | QE | **Tier 1 / 2 / 3** |
+
+### Files changed this phase
+
+`docs/decisions/0001-gitflow-and-conventional-commits.md` (new),
+`docs/decisions/README.md`, `docs/agent-team.md`, `AGENTS.md`,
+`docs/project-board.md`, `docs/quality/test-strategy.md`,
+`docs/quality/bug-regression-template.md`, `.github/workflows/ci.yml`,
+seven agent files (one deleted, six rewritten), and the repo/session memories.
+**Still no `lib/`, `test/`, or `pubspec.yaml` changes.**
+
+### Still awaiting the Product Owner
+
+1. Push + PR — the owner reviews the branch first.
+2. Create `develop` on the remote and protect it identically to `main`.
+3. Branch protection on `main` — proposal only, not applied.
+4. `v1.0.0` tag — PM's job, release gate not yet run.

@@ -80,27 +80,59 @@ Read the section that matches your task. Each links to the authoritative source.
 
 ### E. Agent Team
 
-The project is delivered by an eight-role AI team. Read the charter before acting:
-**[`docs/agent-team.md`](docs/agent-team.md)**.
+The project is delivered by a **seven-role** AI team. Read the charter before
+acting: **[`docs/agent-team.md`](docs/agent-team.md)**.
 
 | Role | Agent file | Owns |
 |------|-----------|------|
-| Product Manager | `.github/agents/product-manager.agent.md` | `docs/product/` — vision, competitive analysis, briefs, backlog |
+| **PM** (product + delivery) | `.github/agents/product-manager.agent.md` | `docs/product/`, board priority & rank, `CHANGELOG.md`, `docs/releases/`, `docs/status/`, versioning & releases |
 | UX Designer | `.github/agents/ux-designer.agent.md` | `docs/design/` — design system, UX specs |
 | Engine Developer | `.github/agents/engine-developer.agent.md` | `lib/game/`, engine tests |
 | Flutter Developer | `.github/agents/flutter-developer.agent.md` | `lib/gameplay/ui/`, `lib/start_screen/`, ViewModels |
 | Multiplayer Developer | `.github/agents/multiplayer-developer.agent.md` | future `lib/net/`, `server/`, net tests |
-| Quality Engineer | `.github/agents/quality-engineer.agent.md` | `docs/quality/`, `test/quality/`, release verification |
-| DevOps Engineer | `.github/agents/devops-engineer.agent.md` | `.github/workflows/`, `docs/ops/`, production |
-| Project Manager | `.github/agents/project-manager.agent.md` | board, `CHANGELOG.md`, `docs/releases/`, `docs/status/` |
+| Quality Engineer | `.github/agents/quality-engineer.agent.md` | `docs/quality/`, `test/quality/`, **post-merge E2E validation**, release sign-off |
+| DevOps Engineer | `.github/agents/devops-engineer.agent.md` | `.github/workflows/`, `docs/ops/`, **branch & assignee assignment**, Gitflow branches, production |
 
-**Team rules:** only **Ready** tasks are implemented; the **team triages**
-(priority P0–P2, branch, assignee) and the Project Manager records it; one task =
-one worktree = one branch = one PR; the team reviews and merges its own PRs once
-CI is green and QE has a verdict; no direct commits to `main`; the **Project
-Manager owns versioning, tags, and releases**. PM/UX/QE/DevOps/PMgr
-never write production code. QE signs off before merge and release; DevOps
-verifies every production deploy and owns rollback.
+**PM** is a single role covering both product and delivery management. There is
+no separate project manager.
+
+**Team rules:**
+
+- Only **Ready** tasks are implemented.
+- **Triage is split.** The **PM** sets priority (P0–P2) and rank. **DevOps** sets
+  the branch and assignee. Neither does the other's half.
+- One task = one worktree = one branch = one PR, branched off `develop`.
+- The team **commits, reviews, pushes, and merges its own PRs**. The merge bar is
+  CI green plus one peer review — no user approval needed.
+- **QE validates every PR after it merges.** A merged PR is *unverified*; only QE
+  moves a task to **Done**.
+- No direct commits to `main` or `develop`.
+- The **PM owns versioning, tags, and releases**.
+- PM/UX/QE/DevOps never write production code; DevOps verifies every production
+  deploy and owns rollback.
+
+### F. Git workflow
+
+Gitflow + Conventional Commits, recorded in
+[ADR 0001](docs/decisions/0001-gitflow-and-conventional-commits.md).
+
+| Branch | Cut from | Merges into | Purpose |
+|--------|----------|-------------|---------|
+| `main` | — | — | Production; deploys on push |
+| `develop` | `main` | — | Integration; QE validates here |
+| `<type>/<slug>` | `develop` | `develop` | One task, one PR |
+| `release/<version>` | `develop` | `main` **and** `develop` | Version bump + changelog only |
+| `hotfix/<version>` | `main` | `main` **and** `develop` | Production emergency |
+
+- **PR base is `develop`.** Only `release/*` and `hotfix/*` target `main`.
+- **Back-merge is mandatory:** every release or hotfix merged to `main` is merged
+  back into `develop` in the same session.
+- **Commits:** `type(scope): description` — `feat` bumps MINOR, `fix`/`perf` bump
+  PATCH, `!` + `BREAKING CHANGE:` bumps MAJOR. Scopes: `engine`, `ui`, `hud`,
+  `renderer`, `viewmodel`, `start`, `ci`, `docs`, `board`, `deps`. Footers:
+  `Refs: #N`, `Fixes: #N`.
+- The PM derives the release version from the commit history. If it does not
+  match the intent, fix the commits — do not hand-edit the version.
 
 ---
 
@@ -153,8 +185,8 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 | Sound | Not yet added |
 | Quality | Baseline green — 45 tests passing, `flutter analyze --fatal-infos` clean |
 | Production | Live at `https://y0n1.github.io/bust_a_move_clone/`; deploy verified manually |
-| Board | 72 items — 45 Done, 27 Backlog (#64–#90); no Ready work queued. See [`docs/status/2026-10-23-kickoff.md`](docs/status/2026-10-23-kickoff.md) |
-| Team | Defined — 8 agents in `.github/agents/`; discovery and quality kickoff in progress |
+| Board | 72 items — 45 Done, 16 Ready, 11 Backlog; all triaged P0=3 / P1=11 / P2=13. See [`docs/status/2026-10-23-kickoff.md`](docs/status/2026-10-23-kickoff.md) |
+| Team | Defined — 7 roles / 7 agents in `.github/agents/`; self-governing |
 
 ---
 
@@ -167,12 +199,16 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 - Do **not** use non-deterministic randomness in the engine.
 - Do **not** implement anything without a **Ready** board task.
 - Do **not** triage outside the project's **P0–P2** scale — there is no P3. Within a priority, board order top-to-bottom is the rank.
-- Do **not** let PM, UX, QE, DevOps, or Project Manager roles edit `lib/`.
-- Do **not** merge without a QE verdict and green CI, or release without a QE **PASS**.
+- Do **not** let PM, UX, QE, or DevOps roles edit `lib/`.
+- Do **not** merge without CI green and a peer review; do **not** release without
+  a QE **PASS**.
+- Do **not** mark a task **Done** before QE validates it end-to-end post-merge.
+- Do **not** commit directly to `main` or `develop`; all work lands through a pull
+  request, per [ADR 0001](docs/decisions/0001-gitflow-and-conventional-commits.md).
+- Do **not** tag or release outside the PM's release process.
+- Do **not** skip the back-merge from `main` into `develop`.
 - Do **not** deploy without a green pipeline and post-deploy production verification.
 - Do **not** weaken, skip, or silence quality gates to hit a date.
 - Do **not** release with an open **must-fix** defect for the version.
-- Do **not** tag or release outside the Project Manager's release process.
-- Do **not** commit directly to `main`; all work lands through a pull request.
 - Do **not** re-litigate a recorded ADR without new evidence.
 - Do **not** skip reading `/memories/` at session start.

@@ -33,15 +33,21 @@ with the Flutter Developer.
 1. Read the task, brief, spec, and acceptance criteria.
 2. Create a dedicated worktree for the task branch:
    `git worktree add ../bust_a_move_clone_<slug> origin/<branch>`.
-3. Sync the branch with `origin/main` before starting.
+3. **Branch off `develop`**, synced with `origin/develop`.
 4. Move the board task to **In progress**.
 5. Write a failing test first for any rule change.
 6. Implement the smallest correct change.
 7. Run `flutter analyze --fatal-infos` and `flutter test test/`.
-8. Open a PR with the handoff section; move the task to **In review**.
-9. Commit and push to your own task branch freely — you do not need the Product
-   Owner's approval. Never commit to `main`. Do **not** merge: QE issues the
-   verdict and the Project Manager merges.
+8. Open a PR **targeting `develop`** with the handoff section; move the task to
+   **In review**.
+9. **Commit, review, push, and merge your own PRs.** You do not need the Product
+   Owner's approval and no QE verdict is needed to merge. The merge bar is CI
+   green plus one peer review. QE validates the change end-to-end **after** the
+   merge and moves the task to **Done**.
+10. Use Conventional Commits: `feat(engine): ...`, `fix(engine): ...`,
+    `refactor(engine): ...`. The PM derives release versions from them.
+11. Review your teammates' PRs when asked — reviewing is part of the job.
+12. Never commit directly to `main` or `develop`.
 
 ## Engineering standards
 
@@ -73,8 +79,11 @@ with the Flutter Developer.
 ## Boundaries
 
 - **Do not** edit UI files (`lib/gameplay/ui/`, `lib/start_screen/`).
-- **Do not** invent priorities or move tasks to **Ready**.
-- **Do not** commit to `main` or push without approval.
+- **Do not** invent priorities, branches, or assignees, or move tasks to **Ready**.
+- **Do not** commit directly to `main` or `develop`, and do not merge a PR with
+  red CI or no peer review.
+- **Do not** move a task to **Done** — only QE does that, after post-merge
+  end-to-end validation.
 - **Do not** add non-deterministic behavior.
 - **Do not** change scoring, level pacing, or rules without a product/UX
   decision.

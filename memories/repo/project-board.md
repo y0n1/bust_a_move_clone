@@ -54,10 +54,17 @@ gh project item-edit --id <PVTI_id> --project-id PVT_kwHOAEGiN84Bl6Cv \
 
 ## Policy (set by the Product Owner, 2026-10-23)
 
-- **The team triages**, not the user. The Project Manager sets priority, branch,
-  and assignee and records the rank on the issue.
+- **The team triages**, not the user. Triage is **split**:
+  - **PM** sets **priority (P0–P2) and rank**. Nothing else.
+  - **DevOps** sets **branch and assignee**. Nothing else.
+  - Neither does the other's half; the PM is not consulted on branches/assignees.
 - **Assignee may be blank** while delivery is agent-only; it does not block Ready.
 - **P0–P2 only.** No P3 option exists; anything low-priority is P2.
+- **Column meanings:** `In review` = PR open for peer review **or** merged and
+  awaiting QE end-to-end validation. `Done` = QE validated post-merge. A merged PR
+  is not a Done task.
+- **Branches are Gitflow:** cut from `develop`, PRs target `develop`. Only
+  `release/*` and `hotfix/*` target `main` (ADR 0001).
 - **Rank within a priority = board order top-to-bottom.** Each issue also records
   its rank in the body (`rank N of M within P#`) so re-sorting cannot lose it.
 - The Product Owner no longer moves cards; they may override any decision.
@@ -86,4 +93,5 @@ gh project item-edit --id <PVTI_id> --project-id PVT_kwHOAEGiN84Bl6Cv \
   that decision going forward.
 - Triage record: `docs/status/2026-10-23-kickoff.md` §3–§6.
 - Board rules: `docs/agent-team.md` §5, including the **defect flow**
-  (QE files → Project Manager triages → Product Manager sets release impact).
+  (QE files → PM triages priority and rank → DevOps assigns branch and assignee
+  → PM sets release impact).

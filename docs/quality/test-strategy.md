@@ -90,16 +90,16 @@ href resolves; serving `build/web` at the root causes blank-page 404s.
 
 ## 7. Browser and device matrix
 
-| Platform | Minimum coverage | Priority |
-|----------|------------------|----------|
-| Chrome stable, desktop | Full smoke + gameplay | P0 |
-| Firefox stable, desktop | Smoke + gameplay | P1 |
-| Safari 17+, desktop | Smoke + gameplay | P1 |
-| Edge stable, desktop | Smoke | P2 |
-| Chrome, Android phone | Touch aim/fire, layout | P0 |
-| Safari, iPhone | Touch aim/fire, layout | P1 |
-| Small viewport (360×640) | Layout, hit targets | P0 |
-| Large viewport (1920×1080) | Layout, scaling | P1 |
+| Platform | Minimum coverage | Coverage tier |
+|----------|------------------|---------------|
+| Chrome stable, desktop | Full smoke + gameplay | Tier 1 |
+| Firefox stable, desktop | Smoke + gameplay | Tier 2 |
+| Safari 17+, desktop | Smoke + gameplay | Tier 2 |
+| Edge stable, desktop | Smoke | Tier 3 |
+| Chrome, Android phone | Touch aim/fire, layout | Tier 1 |
+| Safari, iPhone | Touch aim/fire, layout | Tier 2 |
+| Small viewport (360×640) | Layout, hit targets | Tier 1 |
+| Large viewport (1920×1080) | Layout, scaling | Tier 2 |
 
 Also cover: device pixel ratio 1×/2×/3×, resize during play, orientation
 change, and keyboard-only input.
@@ -160,12 +160,17 @@ The critical journey must pass on every release candidate:
 
 ## 12. Defect severity
 
+**Severity is QE's scale and is not board priority.** The board uses P0–P2
+(owned by the PM) for scheduling; defects use Critical→Low for how bad the
+failure is. They answer different questions, and a defect can be Critical but
+scheduled as P2.
+
 | Severity | Definition | Release impact |
 |----------|------------|----------------|
-| **P0** | Crash, blank page, data loss, unplayable | Blocks merge and release |
-| **P1** | Core loop broken or major regression | Blocks release |
-| **P2** | Degraded experience with a workaround | Release only with recorded user acceptance |
-| **P3** | Cosmetic or minor | May ship; log for later |
+| **Critical** | Crash, blank page, data loss, unplayable | Blocks merge and release |
+| **High** | Core loop broken or major regression | Blocks release |
+| **Medium** | Degraded experience with a workaround | Release only with recorded user acceptance |
+| **Low** | Cosmetic or minor | May ship; log for later |
 
 Every defect includes environment, steps, expected/actual, frequency, and
 evidence.
@@ -184,7 +189,7 @@ evidence.
 |--------|--------|
 | PR gate pass rate | > 95% |
 | Flaky test rate | < 2% |
-| Escaped P0/P1 defects per release | 0 |
+| Escaped Critical/High defects per release | 0 |
 | Acceptance criteria mapped to evidence | 100% |
 | Smoke suite duration | < 5 minutes |
 | Release gate first-pass rate | > 80% |

@@ -72,8 +72,11 @@ flowchart LR
 
 - **Do not** implement multiplayer before an approved brief + UX spec + ADR.
 - **Do not** edit UI or engine files without coordinating with their owners.
-- **Do not** invent priorities or move tasks to **Ready**.
-- **Do not** commit to `main` or push without approval.
+- **Do not** invent priorities, branches, or assignees, or move tasks to **Ready**.
+- **Do not** commit directly to `main` or `develop`, and do not merge a PR with
+  red CI or no peer review.
+- **Do not** move a task to **Done** — only QE does that, after post-merge
+  end-to-end validation.
 - **Do not** add a backend dependency or hosting provider without user approval.
 
 ## Output format

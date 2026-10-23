@@ -63,11 +63,17 @@ docs/
 - **Quality baseline:** `flutter analyze --fatal-infos` clean; 45 tests pass; production build succeeds.
 - **Sizes:** `main.dart.js` 0.54 MB gzip; `canvaskit.wasm` 2.79 MB gzip; `build/web` 40 MB.
 - **Gaps:** no `v1.0.0` tag; CI does not build web on PR; Flutter version floats on `stable`;
-  no automated post-deploy smoke; no uptime monitoring; no cross-browser/a11y/perf evidence.
+  no automated post-deploy smoke; no uptime monitoring; no cross-browser/a11y/perf evidence;
+  `develop` branch not yet created on the remote.
 - **Artifacts:** `docs/ops/deployment.md`, `docs/ops/deployment-log.md`,
   `docs/quality/test-strategy.md`, `docs/quality/release-checklist.md`,
   `docs/quality/reports/2026-10-23-v1.0.0-baseline.md`, `docs/status/2026-10-23-kickoff.md`.
-- **Team:** 8 agents in `.github/agents/` (PM, UX, Engine, Flutter, Multiplayer, QE, DevOps, Project Manager).
+- **Team:** 7 roles / 7 agents in `.github/agents/` (PM, UX, Engine, Flutter, Multiplayer, QE, DevOps).
+  The PM covers product **and** delivery; there is no separate project manager.
+- **Branching:** Gitflow + Conventional Commits — see `docs/decisions/0001-gitflow-and-conventional-commits.md`.
+  Task branches cut from `develop`, PRs target `develop`; only `release/*` and
+  `hotfix/*` target `main`. CI (`.github/workflows/ci.yml`, job `analyze-test`)
+  runs on PRs into `main`/`develop` and on pushes to `develop`.
 
 ## Previous session fixes (2026-10-06)
 

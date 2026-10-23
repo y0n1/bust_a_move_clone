@@ -10,21 +10,26 @@
 
 | Column | Meaning |
 |--------|---------|
-| **Backlog** | Not started: lower priority or blocked. No branch expected. |
-| **Ready** | Triaged: priority (P0–P2), branch, acceptance criteria. Agents pick from here. |
+| **Backlog** | Not started: untriaged, lower priority, or blocked. No branch expected. |
+| **Ready** | Triaged: priority + rank (PM), branch + assignee (DevOps), acceptance criteria. Agents pick from here. |
 | **In progress** | Agent is actively working on the associated branch. |
-| **In review** | PR is open. Waiting for merge. |
-| **Done** | PR merged or closed. |
+| **In review** | PR open for peer review, **or** merged and awaiting QE end-to-end validation. |
+| **Done** | QE validated the change end-to-end post-merge (and, for releases, production is verified). |
 
 ---
 
-## Task Requirements (What the user MUST provide)
+## Triage (who fills what)
 
-Every task must include:
+Triage is **split**, not shared. Neither role does the other's half.
 
-- **Priority** — establishes order of work (e.g., P1, P2, P3)
-- **Upstream branch** — the feature branch to sync with `origin/main`
-- **Assignee** — who is responsible (human or agent)
+| Field | Owner | Notes |
+|-------|-------|-------|
+| **Priority** (P0–P2) + rank | **PM** | There is no P3. Board order top-to-bottom is the rank within a priority. |
+| **Branch** | **DevOps** | Gitflow name, cut from `develop`. |
+| **Assignee** | **DevOps** | May be left blank. |
+
+The PM does not set branches or assignees and is not consulted on them. DevOps
+does not set priority or rank.
 
 ---
 
@@ -32,17 +37,20 @@ Every task must include:
 
 1. Only pick tasks in **Ready** state.
 2. Work through tasks in priority order until exhausted.
-3. Never commit directly to `main` — all work goes through the board.
+3. Never commit directly to `main` or `develop` — all work goes through a pull
+   request, per [ADR 0001](decisions/0001-gitflow-and-conventional-commits.md).
 4. Use a dedicated worktree per task to avoid conflicts.
-5. Sync the task branch with `origin/main` before starting work.
-6. Transition task status as work progresses:
+5. **Branch off `develop`**, synced with `origin/develop`, before starting work.
+6. Commit, review, push, and merge your own PRs once CI is green and a peer has
+   reviewed. No user approval is needed.
+7. Transition task status as work progresses:
 
 | From | To | When |
 |------|----|------|
-| Backlog | Ready | Definition of Ready met; Project Manager records priority, branch, and rank |
+| Backlog | Ready | Definition of Ready met; **PM** records priority and rank, **DevOps** records branch and assignee |
 | Ready | In progress | Agent checks out the branch |
 | In progress | In review | PR is opened |
-| In review | Done | PR is merged or closed |
+| In review | Done | **QE** validated the change end-to-end on the target branch |
 
 ---
 
@@ -62,6 +70,9 @@ Every task must include:
 | `ci/` | CI/CD changes |
 
 Examples: `feat/wall-descent`, `fix/match-3-off-by-one`, `refactor/engine-api`
+
+Task branches are cut from `develop` and their PRs target `develop`. Only
+`release/<version>` and `hotfix/<version>` target `main`.
 
 ---
 

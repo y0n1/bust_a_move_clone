@@ -17,11 +17,12 @@ Copy verbatim into the GitHub issue body. Replace every `___`.
 ```markdown
 ## Bug: <short imperative title>
 
-**Severity:** P0 | P1 | P2 | P3
-<!-- P0 = unplayable/blank page/crash/data loss/production down
-     P1 = core loop broken (match, pop, descent, win/lose, lives, restart)
-     P2 = degraded but playable with a workaround
-     P3 = cosmetic/minor -->
+**Severity:** Critical | High | Medium | Low
+<!-- Severity is QE's scale and is NOT board priority (P0-P2, owned by the PM).
+     Critical = unplayable/blank page/crash/data loss/production down
+     High     = core loop broken (match, pop, descent, win/lose, lives, restart)
+     Medium   = degraded but playable with a workaround
+     Low      = cosmetic/minor -->
 
 ### Environment
 | Field | Value |
@@ -159,26 +160,26 @@ bugs drive `GameViewModel(engine)` via `computeLayout(Size)`, `updateAim(Offset,
 
 | Severity | Regression must be | File | Gates release |
 |----------|--------------------|------|---------------|
-| **P0** — unplayable, blank page, crash, data loss, production down | Engine or ViewModel unit test **and** a smoke check once #69 lands | `test/engine_test.dart`, `test/descent_test.dart`, `test/gameplay/viewmodel/game_viewmodel_test.dart` | **Yes — blocks merge and release** |
-| **P1** — core loop broken: match/pop, chain, cluster drop, descent, win/lose, lives, restart | Engine or ViewModel unit test | same as above | **Yes — blocks release** |
-| **P2** — degraded but playable with a workaround | Widget test if visual/input, otherwise unit/ViewModel | `test/gameplay/ui/` (new file), `test/start_screen_test.dart` | Only with recorded user risk acceptance |
-| **P3** — cosmetic/minor | Optional; add only if cheap and stable | nearest existing file | No |
+| **Critical** — unplayable, blank page, crash, data loss, production down | Engine or ViewModel unit test **and** a smoke check once #69 lands | `test/engine_test.dart`, `test/descent_test.dart`, `test/gameplay/viewmodel/game_viewmodel_test.dart` | **Yes — blocks merge and release** |
+| **High** — core loop broken: match/pop, chain, cluster drop, descent, win/lose, lives, restart | Engine or ViewModel unit test | same as above | **Yes — blocks release** |
+| **Medium** — degraded but playable with a workaround | Widget test if visual/input, otherwise unit/ViewModel | `test/gameplay/ui/` (new file), `test/start_screen_test.dart` | Only with recorded user risk acceptance |
+| **Low** — cosmetic/minor | Optional; add only if cheap and stable | nearest existing file | No |
 
 No gameplay widget tests exist yet (`test/gameplay/ui/` and `test/gameplay/logic/` are
-empty), so a P2 gameplay UI bug relies on manual verification until the first one lands
-— say so in the issue rather than implying coverage.
+empty), so a Medium gameplay UI bug relies on manual verification until the first one
+lands — say so in the issue rather than implying coverage.
 
 ## 6. Triage SLA
 
-Realistic for one human plus agents. If a P1 will miss its window, say so on the issue
-and record it as a known risk.
+Realistic for one human plus agents. If a High defect will miss its window, say so
+on the issue and record it as a known risk.
 
 | Severity | Acknowledge | Fix | Regression test |
 |----------|-------------|-----|-----------------|
-| P0 | Same day | Mitigate/roll back immediately; root cause within 2 days | In the fix PR |
-| P1 | 1 business day | 3 business days | In the fix PR |
-| P2 | 3 business days | Next release or 2 weeks, whichever first | In the fix PR, or a linked follow-up |
-| P3 | At next planning | When cheap | Optional |
+| Critical | Same day | Mitigate/roll back immediately; root cause within 2 days | In the fix PR |
+| High | 1 business day | 3 business days | In the fix PR |
+| Medium | 3 business days | Next release or 2 weeks, whichever first | In the fix PR, or a linked follow-up |
+| Low | At next planning | When cheap | Optional |
 
 ## 7. Known baseline gaps
 
@@ -194,6 +195,6 @@ in the issue's "Fix verification" checklist until the linked issue lands.
 | No performance trace / Lighthouse budget | #72 | Jank during pops, chains, descent; load-time regressions |
 | No cross-browser evidence | #73 | Firefox/Safari/Edge and mobile-touch defects invisible to Chromium-only runs |
 
-Consequence: a P1 filed against one of these areas must include a **manual
+Consequence: a High defect filed against one of these areas must include a **manual
 reproduction on the built artifact** in its evidence. A green `flutter test test/` is
 not evidence for any of them.

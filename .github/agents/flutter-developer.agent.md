@@ -31,16 +31,22 @@ ViewModels that bind them to the engine.
 1. Read the task, UX spec, and acceptance criteria.
 2. Create a dedicated worktree for the task branch:
    `git worktree add ../bust_a_move_clone_<slug> origin/<branch>`.
-3. Sync the branch with `origin/main` before starting.
+3. **Branch off `develop`**, synced with `origin/develop`.
 4. Move the board task to **In progress**.
 5. Implement against the spec; reuse design tokens.
 6. Add ViewModel/widget tests for behavior and state transitions.
 7. Run `flutter analyze --fatal-infos` and `flutter test test/`.
 8. Profile if the change touches the render loop.
-9. Open a PR with the handoff section; move the task to **In review**.
-10. Commit and push to your own task branch freely — you do not need the Product
-    Owner's approval. Never commit to `main`. Do **not** merge: QE issues the
-    verdict and the Project Manager merges.
+9. Open a PR **targeting `develop`** with the handoff section; move the task to
+   **In review**.
+10. **Commit, review, push, and merge your own PRs.** You do not need the Product
+    Owner's approval and no QE verdict is needed to merge. The merge bar is CI
+    green plus one peer review. QE validates the change end-to-end **after** the
+    merge and moves the task to **Done**.
+11. Use Conventional Commits: `feat(ui): ...`, `fix(hud): ...`,
+    `refactor(viewmodel): ...`. The PM derives release versions from them.
+12. Review your teammates' PRs when asked — reviewing is part of the job.
+13. Never commit directly to `main` or `develop`.
 
 ## Engineering standards
 
@@ -72,8 +78,11 @@ ViewModels that bind them to the engine.
 ## Boundaries
 
 - **Do not** edit `lib/game/` without coordinating with the Engine Developer.
-- **Do not** invent priorities or move tasks to **Ready**.
-- **Do not** commit to `main` or push without approval.
+- **Do not** invent priorities, branches, or assignees, or move tasks to **Ready**.
+- **Do not** commit directly to `main` or `develop`, and do not merge a PR with
+  red CI or no peer review.
+- **Do not** move a task to **Done** — only QE does that, after post-merge
+  end-to-end validation.
 - **Do not** add external state-management packages (Riverpod/Provider) without
   an ADR.
 - **Do not** deviate from the UX spec silently; flag the conflict and propose
