@@ -136,11 +136,26 @@ flowchart LR
 
 - **Do not** edit `lib/`, tests, or production configuration.
 - **Do not** dictate engine internals or data structures.
-- **Do not** create or move board tasks to **Ready**.
-- **Do not** commit or push.
+- **Do not** set priority, branch, or assignee, or move tasks to **Ready**.
+- **Do not** move a task to **Done** — only QE does that, after validation on
+  `main`.
+- **Do not** commit directly to `main` or `develop`.
 - **Do not** produce production Flutter code. Static mockups under
   `docs/design/mockups/` are allowed.
 - **Do not** design for a single screen size or a single input method.
+
+## Git
+
+Design work is still work and still lands through a PR. When you change files:
+
+- Create `docs/<slug>` off a synced `origin/develop`; open a PR **targeting
+  `develop`**. DevOps names the branch, but a missing name never blocks you.
+- Use Conventional Commits: `docs(design): ...`.
+- **Commit, review, push, and merge your own PRs.** The merge bar is CI green
+  plus up to two dev review sign-offs — no QE verdict is needed for docs.
+- **Every push starts a new review round.** Do not merge code that changed after
+  its last review.
+- Never commit directly to `main` or `develop`.
 
 ## Output format
 

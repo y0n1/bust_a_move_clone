@@ -46,4 +46,4 @@ What new evidence would reopen this decision?
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| — | No decisions recorded yet | — | — |
+| [0001](0001-gitflow-and-conventional-commits.md) | Gitflow branching and Conventional Commits | accepted | 2026-10-23 |

@@ -1,8 +1,10 @@
 # Release Checklist — Bust-A-Move Clone
 
 > **Owner:** Quality Engineer  
-> **Use:** Every release candidate, before the Project Manager tags and DevOps deploys.  
-> **Companion:** [`test-strategy.md`](test-strategy.md), [`../ops/deployment.md`](../ops/deployment.md)
+> **Use:** Every release candidate, before the PM cuts `release/x.y.z`, tags, and DevOps deploys.  
+> **Companion:** [`test-strategy.md`](test-strategy.md), [`../ops/deployment.md`](../ops/deployment.md),
+> [`../decisions/0001-gitflow-and-conventional-commits.md`](../decisions/0001-gitflow-and-conventional-commits.md),
+> [`../decisions/0002-validate-on-main.md`](../decisions/0002-validate-on-main.md)
 
 ---
 
@@ -16,16 +18,25 @@
 | QE report | `docs/quality/reports/YYYY-MM-DD-vX.Y.Z.md` |
 | Target deploy | GitHub Pages |
 
+> **Ordering matters.** QE validates on `main`, so the release merges and deploys
+> *before* the verdict. The PM tags only after QE reports **PASS**. Sections 1–2
+> gate the merge; sections 3–4 gate the tag.
+
 ---
 
-## 1. Pre-flight
+## 1. Pre-flight (before the `release/*` PR merges)
 
-- [ ] All release-scope tasks are **Done** and QE-verified.
+- [ ] All release-scope tasks have a merged PR into `develop` and are **In
+      review** — they are *not* Done yet, because QE has not validated them.
+- [ ] Each release-scope task carries an **acceptance rubric** written by its
+      implementor.
 - [ ] `CHANGELOG.md` updated for every user-facing change.
-- [ ] Version bumped in `pubspec.yaml` (SemVer).
+- [ ] Version **derived from the Conventional Commits history** since the last tag
+      (`git log --oneline $(git describe --tags --abbrev=0)..HEAD`) and bumped in
+      `pubspec.yaml`.
 - [ ] Release notes drafted in `docs/releases/release-notes/vX.Y.Z.md`.
 - [ ] Rollback target identified (last known-good commit/tag).
-- [ ] No open P0/P1 defects in scope.
+- [ ] No open Critical/High defects in scope.
 
 ## 2. Build and CI
 
@@ -36,9 +47,10 @@
 - [ ] CI workflow is green on the candidate commit.
 - [ ] Build artifact size is within budget.
 
-## 3. Acceptance and regression
+## 3. Acceptance and regression (on `main`, after the release merges)
 
-- [ ] Every acceptance criterion is mapped to evidence.
+- [ ] Every **acceptance-rubric item** on every release-scope task is mapped to
+      evidence, on `main` or on the deployed production build.
 - [ ] Critical-path smoke suite passes (start → aim → fire → match → descend →
       win/lose → retry).
 - [ ] Wall bounce, life loss, level transition, and restart verified.
@@ -79,6 +91,9 @@
 
 ## 7. Deployment readiness
 
+- [ ] `release/x.y.z` branch cut from `develop` containing only the version bump
+      and `CHANGELOG.md`.
+- [ ] `release/x.y.z` merged into `main` with a merge commit (not squash).
 - [ ] Deploy workflow is green on `main` after merge.
 - [ ] `version.json` matches the release version.
 - [ ] Production URL returns HTTP 200.
@@ -87,6 +102,9 @@
 - [ ] Service worker updates to the new build.
 - [ ] Rollback path verified with DevOps.
 - [ ] `docs/ops/deployment-log.md` entry prepared.
+- [ ] **Only after QE PASS:** `vX.Y.Z` tagged on the release merge commit and the
+      GitHub Release published.
+- [ ] `main` **back-merged into `develop`**; `release/x.y.z` deleted.
 
 ## 8. Verdict
 
@@ -109,5 +127,7 @@ User risk acceptance (if CONDITIONAL/override): `__________`
 - [ ] Deployment log updated.
 - [ ] GitHub Release published with notes.
 - [ ] Tag matches the deployed commit.
-- [ ] Board tasks moved to **Done**.
+- [ ] Every release-scope task moved to **Done** by QE (rejected tasks sent back
+      to **Ready**, with the PM notified).
+- [ ] Task branches deleted by DevOps for every passed task.
 - [ ] Any escaped defect has a follow-up task.

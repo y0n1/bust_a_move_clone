@@ -63,11 +63,30 @@ docs/
 - **Quality baseline:** `flutter analyze --fatal-infos` clean; 45 tests pass; production build succeeds.
 - **Sizes:** `main.dart.js` 0.54 MB gzip; `canvaskit.wasm` 2.79 MB gzip; `build/web` 40 MB.
 - **Gaps:** no `v1.0.0` tag; CI does not build web on PR; Flutter version floats on `stable`;
-  no automated post-deploy smoke; no uptime monitoring; no cross-browser/a11y/perf evidence.
+  no automated post-deploy smoke; no uptime monitoring; no cross-browser/a11y/perf evidence;
+  `develop` branch not yet created on the remote.
 - **Artifacts:** `docs/ops/deployment.md`, `docs/ops/deployment-log.md`,
   `docs/quality/test-strategy.md`, `docs/quality/release-checklist.md`,
   `docs/quality/reports/2026-10-23-v1.0.0-baseline.md`, `docs/status/2026-10-23-kickoff.md`.
-- **Team:** 8 agents in `.github/agents/` (PM, UX, Engine, Flutter, Multiplayer, QE, DevOps, Project Manager).
+- **Team:** 7 roles / 7 agents in `.github/agents/` (PM, UX, Engine, Flutter, Multiplayer, QE, DevOps).
+  The PM covers product **and** delivery; there is no separate project manager.
+- **Branching:** Gitflow + Conventional Commits — see `docs/decisions/0001-gitflow-and-conventional-commits.md`.
+  Task branches cut from `develop`, PRs target `develop`; only `release/*` and
+  `hotfix/*` target `main`. CI (`.github/workflows/ci.yml`, job `analyze-test`)
+  runs on PRs into `main`/`develop` and on pushes to `develop` and `main`.
+- **Validation surface:** QE validates **on `main`** (or on a `release/*` branch for
+  release-time defects) — see `docs/decisions/0002-validate-on-main.md`. Never on
+  `develop`, never on a `feat/*`/`fix/*` branch. Consequences: a task stays **In
+  review** from merge into `develop` until its release reaches `main`; `main`
+  auto-deploys, so a broken release is publicly live until QE rejects it and a
+  hotfix lands. Revisit trigger: two QE FAILs reaching production in one cycle.
+- **Workflow:** PM moves tasks to **Ready** on planning consensus (no branch
+  needed) → dev creates the branch off `develop`, writes the **acceptance
+  rubric**, implements, opens a PR to `develop` and moves the task **In review**
+  → ≤2 dev subagents review in parallel, **every push restarts the round**, the
+  implementor merges → PM cuts `release/*`, merges to `main` → DevOps deploys →
+  QE validates on `main` against the rubric → PASS = **Done** + DevOps deletes the
+  branch; FAIL = evidence + defect + back to **Ready** + PM schedules a dev ASAP.
 
 ## Previous session fixes (2026-10-06)
 

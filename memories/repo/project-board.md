@@ -12,7 +12,7 @@
 | Field | Type | Notes |
 |-------|------|-------|
 | Status | SingleSelect | Backlog, Ready, In progress, In review, Done |
-| Priority | SingleSelect | P0, P1, P2 only — **no P3 option** despite charter P0–P3 |
+| Priority | SingleSelect | P0, P1, P2 only — **no P3**. Low-priority work is P2 (charter aligned 2026-10-23). |
 | Assignees | User | |
 | Labels | MultiSelect | |
 | Linked pull requests | PR | |
@@ -46,7 +46,35 @@ gh project item-edit <item-id> --title "New title"
 # Move an issue to Backlog
 gh project item-edit --id <PVTI_id> --project-id PVT_kwHOAEGiN84Bl6Cv \
   --field-id PVTSSF_lAHOAEGiN84Bl6CvzhklC-c --single-select-option-id f75ad846
+
+# Set priority (P0/P1/P2)
+gh project item-edit --id <PVTI_id> --project-id PVT_kwHOAEGiN84Bl6Cv \
+  --field-id PVTSSF_lAHOAEGiN84Bl6CvzhklDLc --single-select-option-id <P0|P1|P2 id>
 ```
+
+## Policy (set by the Product Owner, 2026-10-23)
+
+- **The team triages**, not the user. Triage is **split**:
+  - **PM** sets **priority (P0–P2) and rank**, then moves agreed tasks to
+    **Ready** on planning consensus. Nothing else.
+  - **DevOps** sets **branch name and assignee**. Nothing else. The **developer
+    creates** the branch on intake.
+  - Neither does the other's half; the PM is not consulted on branches/assignees.
+- **Assignee and branch may be blank.** Neither blocks `Ready`; `Ready` never
+  waits for a branch.
+- **P0–P2 only.** No P3 option exists; anything low-priority is P2.
+- **Column meanings:** `In review` = PR open for peer review **or** merged into
+  `develop` and waiting for its release to reach `main`. `Done` = QE validated
+  **on `main`** against the developer's acceptance rubric. A merged PR is not a
+  Done task, and the implementor never moves the card to Done.
+- **Only QE moves a task to `Done`.** A rejection sends it back to **`Ready`**
+  with evidence; the PM re-prioritises (usually P0) and schedules a developer.
+- **Branches are Gitflow:** cut from `develop`, PRs target `develop`. Only
+  `release/*` and `hotfix/*` target `main` (ADR 0001). QE validates on `main`
+  (ADR 0002), never on `develop` or a task branch.
+- **Rank within a priority = board order top-to-bottom.** Each issue also records
+  its rank in the body (`rank N of M within P#`) so re-sorting cannot lose it.
+- The Product Owner no longer moves cards; they may override any decision.
 
 ## Gotchas
 
@@ -62,11 +90,18 @@ gh project item-edit --id <PVTI_id> --project-id PVT_kwHOAEGiN84Bl6Cv \
   during incidents; do not delete/re-add items to "force" indexing (it does not help).
 - Board items are real **Issues** (not draft issues), so they have numbers and URLs.
 
-## State snapshot — 2026-10-23
+## State snapshot — 2026-10-23 (after team triage)
 
-- **72 items**: 45 **Done**, 27 **Backlog** (issues #64–#90), nothing in Ready,
-  In progress, or In review.
-- No implementation may start until the user triages tasks into **Ready**.
-- Triage proposals: `docs/status/2026-10-23-kickoff.md` (§4 maps every ID to its issue number).
-- Priorities are intentionally **unset** on the 27 new items — only the user triages.
-- Board rules and status transitions: `docs/agent-team.md` §5 and `docs/project-board.md`.
+- **72 items**: 45 **Done**, 16 **Ready**, 11 **Backlog**; 0 In progress, 0 In review.
+- All 27 kickoff items (#64–#90) carry a priority, branch name, and rank:
+  **P0 = 3**, **P1 = 11**, **P2 = 13**. No unprioritised items.
+- Assignees are blank by design (agent-only delivery).
+- Ready set includes items the Product Owner moved manually; the team now owns
+  that decision going forward.
+- Triage record: `docs/status/2026-10-23-kickoff.md` §3–§6.
+- Board rules: `docs/agent-team.md` §5, including the **defect flow**
+  (QE files → PM triages priority and rank → DevOps assigns branch name and
+  assignee → PM sets release impact).
+- **Transitions:** `Backlog → Ready` (PM, on planning consensus) · `Ready → In
+  progress` (dev intake) · `In progress → In review` (PR opened) · `In review →
+  Ready` (QE rejection, with evidence) · `In review → Done` (QE PASS on `main`).
