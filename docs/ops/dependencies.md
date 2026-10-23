@@ -17,7 +17,7 @@
 | Dependabot version updates | `github-actions` | Weekly, Monday | `.github/dependabot.yml` | **`main` only** |
 | Dependency review gate | whatever the dependency graph holds | Every PR to `main` and `develop` | `.github/workflows/dependency-review.yml` | the PR's **base branch** |
 | Dependabot security updates | both | As soon as an advisory matches | repository settings — *not* a file | `main` |
-| Dependency graph | `pub` | On every push | GitHub, from the committed `pubspec.lock` | `main` |
+| Dependency graph | `pub` | On every push — **currently disabled on this repository**, see §7.1 | GitHub, from the committed `pubspec.lock` | `main` |
 
 Two of those rows are the reason this document exists at all:
 
@@ -26,9 +26,13 @@ read from `main`. A change to `dependabot.yml` merged into `develop` does nothin
 until the release that carries it reaches `main` — so "Dependabot is configured"
 means "configured, and armed at the next release", not "already opening PRs".
 
-**The review gate is live the moment it lands.** `pull_request` workflows are
-taken from the base branch, so once this workflow is on `develop`, every PR
-opened afterwards is reviewed — including PRs that never touch the workflow.
+**The review gate runs on its own PR.** A workflow added in a pull request runs
+for that pull request — observed on
+[#104](https://github.com/y0n1/bust_a_move_clone/pull/104), where the
+`dependency-review` job appeared alongside `analyze-test` and `build-web`. There
+is no "wait for the next PR" gap: the gate either works the first time it is
+exercised, or it fails there, visibly. On #104 it failed, and §7.1 is what it
+said.
 
 ## 2. Cadence, and why
 
@@ -125,9 +129,45 @@ but does not block. Rationale is in the workflow comments.
 | Claim | Status |
 |-------|--------|
 | `dependabot.yml` parses and matches the documented option names | ✅ validated locally before merge (a malformed file fails **silently**: no PRs, no red run) |
-| `dependency-review.yml` parses and runs on a PR | ✅ proven by this PR's own CI run |
+| `dependency-review.yml` parses and runs on a PR | ✅ observed on #104 — the job started and failed with an actionable message, not a YAML error |
+| The gate can actually evaluate **this** repository | ❌ **BLOCKED** — the repository has no dependency graph. See §7.1 |
 | Dependabot actually opens a PR on schedule | ⏳ **not yet proven** — the schedule is read from `main`, so the first real proof is the first Monday after this reaches `main` |
 | The check blocks the merge button | ❌ **not yet** — a required status check is a repository setting. `dependency-review` is added to the proposal in [`branch-protection.md`](branch-protection.md) §3, which is not applied |
+
+### 7.1 Blocker: this repository has no dependency graph
+
+The action does not scan anything itself. It asks GitHub's dependency review API
+to diff two revisions, and that API is unavailable here:
+
+```console
+$ gh run view --log-failed
+##[error]Dependency review is not supported on this repository.
+Please ensure that Dependency graph is enabled
+
+$ gh api repos/y0n1/bust_a_move_clone/dependency-graph/sbom
+{"message":"Not Found","status":"404"}
+
+$ gh api repos/y0n1/bust_a_move_clone/dependency-graph/compare/develop...2d119b0
+{"message":"Forbidden","status":"403"}
+
+$ gh api repos/y0n1/bust_a_move_clone/dependabot/alerts
+{"message":"Dependabot alerts are disabled for this repository.","status":"403"}
+```
+
+All of **Code security and analysis** is off for this repository: no dependency
+graph, no Dependabot alerts, no Dependabot security updates, no secret scanning
+(`security_and_analysis` in `GET /repos/{owner}/{repo}` reports every entry as
+`disabled`).
+
+**This cannot be fixed from a file.** Enabling the dependency graph is a
+repository setting. It is also the *precondition* for three of this task's four
+acceptance criteria, so OPS-7 is blocked on a settings change rather than on
+code — recorded here instead of being papered over with a workflow that skips
+itself when the graph is missing. A gate that silently no-ops is worse than no
+gate, because it reports green.
+
+Once the graph is enabled, re-running the job on any PR is enough; nothing in
+this repository needs to change.
 
 ## 8. Files
 
@@ -146,3 +186,6 @@ but does not block. Rationale is in the workflow comments.
   mass changes, and SHA pinning is a repo-wide sweep.
 - **No licence allow-list.** See §3.
 - **The gate is not a required check.** See §7.
+- **The dependency graph is disabled, so the gate cannot run at all.** See §7.1.
+  Until that changes, the red `dependency-review` check on every PR is reporting
+the repository's configuration, not the PR's dependencies.
