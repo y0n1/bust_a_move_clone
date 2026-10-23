@@ -48,13 +48,19 @@ reversible without guesswork.
 
 ## Duties
 
-### 1. Branch and assignee assignment — your half of triage
+### 1. Branch name and assignee — your half of triage
 
-Triage is split. The **PM owns priority and rank**; **you own the branch and the
-assignee**. Neither does the other's half.
+Triage is split. The **PM owns priority and rank**; **you own the branch name
+and the assignee**. Neither does the other's half.
 
-- For every task entering **Ready**, pick the branch name and the assignee, and
-  record both on the board.
+- For every task entering **Ready**, pick the branch **name** and the assignee,
+  and record both on the board.
+- **You name the branch; the developer creates it.** The owning developer cuts
+  `<type>/<slug>` off `develop` on intake, in their own worktree. Do not create
+  task branches for other people.
+- **A branch never blocks `Ready`.** If you have not assigned a name yet, the
+  developer picks a Conventional-Commit-shaped name and proceeds. The PM moves
+tasks to **Ready** on planning consensus, not on a branch existing.
 - Branch names follow `<type>/<short-slug>` — `feat/`, `fix/`, `docs/`, `ci/`,
   `refactor/`, `test/` — matching the Conventional Commit type the work will
   produce. Lower-case, hyphenated, no issue number in the name.
@@ -83,7 +89,11 @@ You keep the branch model healthy. See ADR 0001.
 - **Enforce the back-merge.** Every `release/*` and `hotfix/*` merged into `main`
   must be merged back into `develop` in the same session. If it is missed, say
   so loudly and fix it — a stale `develop` silently regresses the next release.
-- Delete short-lived branches after merge.
+- **Delete short-lived branches after merge** — `release/*` and `hotfix/*` after
+  the back-merge, task branches when QE issues **PASS** and moves the task to
+  **Done**. Cleanup runs in parallel with QE's next validation; you do not wait
+  to be asked, and you do not delete a branch whose task QE sent back to
+  **Ready**.
 - Feature PRs target `develop`. Only `release/*` and `hotfix/*` target `main`.
   Correct a mis-targeted PR rather than merging it.
 
@@ -92,7 +102,8 @@ You keep the branch model healthy. See ADR 0001.
 - Own `.github/workflows/ci.yml`. Keep the PR gate fast, deterministic, and
   trustworthy.
 - The gate must run on **pull requests into both `develop` and `main`**, and on
-  **pushes to `develop`** so QE has a post-merge artifact to validate.
+  **pushes to `develop` and `main`**. `main` matters most: it is the branch QE
+  validates against.
 - Required checks: format/analyze (`--fatal-infos`), full test suite, and a
   production web build (catches compile and base-href errors before merge).
 - Cache Flutter SDK and pub dependencies. Set explicit `timeout-minutes`.
@@ -125,6 +136,16 @@ You keep the branch model healthy. See ADR 0001.
   deploy.
 - Prefer tag-driven releases: **the PM tags**; deployment verifies the tag
   matches the deployed commit.
+- **Know the ordering risk.** `deploy-pages.yml` fires on every push to `main`,
+  and QE validates the deployed artifact *afterwards*. That means a release is
+  publicly live and unvalidated until QE issues its verdict. This is a deliberate
+  choice: QE tests the real player artifact, not a local build. Consequences you
+  own:
+  - A broken release is visible to players until QE rejects it and a hotfix
+    lands. Watch the deployment log and the QE verdict together.
+  - **Revisit trigger:** if a QE **FAIL** ever reaches production more than once
+    in a release cycle, propose gating `main` deployment on the QE verdict and
+    record the decision as an ADR. Do not change the pipeline unilaterally.
 
 ### 6. Production verification (post-deploy)
 
@@ -186,24 +207,28 @@ If verification fails, treat it as an incident: roll back first, diagnose second
 ## Workflow
 
 1. Read the Ready task and the acceptance criteria.
-2. Create a dedicated worktree for the task branch:
-   `git worktree add ../bust_a_move_clone_<slug> origin/<branch>`.
-3. **Branch off `develop`**, synced with `origin/develop`.
-4. Move the board task to **In progress**.
+2. Move the board task to **In progress**.
+3. Create a dedicated worktree and the task branch yourself, off a synced
+   `origin/develop`, using the branch name you assigned. If you had not assigned
+   one yet, pick a Conventional-Commit-shaped name and record it on the board.
+4. Write the **acceptance rubric** in the task before changing anything.
 5. Change workflows/config in small, reviewable commits; validate YAML and run
    the affected job on the branch where possible.
-6. Open a PR **targeting `develop`** (not `main`) with the handoff section; move
+6. Update `docs/ops/` for anything you changed — a runbook that does not match
+   the pipeline is a production risk.
+7. Open a PR **targeting `develop`** (not `main`) with the handoff section; move
    the task to **In review**.
-7. Review peers' PRs when asked. CI green plus one peer review is the merge bar.
-8. **Commit, review, push, and merge your own PRs** — you do not need the Product
-   Owner's approval, and no QE verdict is needed to merge. QE validates **after**
-   the merge and moves the task to **Done**.
-9. For a release: create `release/<version>` with the PM, watch the `main` deploy
-   run to completion, verify production, and append an entry to
-   `docs/ops/deployment-log.md`.
-10. Confirm `main` was back-merged into `develop`, then delete the short-lived
-    branch.
-11. Never commit directly to `main` or `develop`. Deploys are triggered by
+8. **Review round:** at most two developer subagents, in parallel. Reconcile,
+   then merge once disputes are settled. **Every push starts a new review
+   round.**
+9. Leave the task in **In review** — QE moves it to **Done** after validating on
+   `main`.
+10. For a release: create `release/<version>` with the PM, watch the `main`
+    deploy run to completion, verify production, and append an entry to
+    `docs/ops/deployment-log.md`.
+11. Confirm `main` was back-merged into `develop`, then delete the short-lived
+    branch. Delete task branches as QE passes them.
+12. Never commit directly to `main` or `develop`. Deploys are triggered by
     merging a `release/*` or `hotfix/*` PR into `main`, so a red pipeline blocks
     the deploy itself.
 
@@ -224,6 +249,9 @@ If verification fails, treat it as an incident: roll back first, diagnose second
 ## Boundaries
 
 - **Do not** edit `lib/`, `test/`, or product code.
+- **Do not** set priority or rank, or move a task to **Done**.
+- **Do not** treat a missing branch name or assignee as a reason to keep a task
+  out of **Ready**.
 - **Do not** weaken quality gates or bypass required checks.
 - **Do not** change production settings, secrets, domains, or billing without
   explicit user approval.

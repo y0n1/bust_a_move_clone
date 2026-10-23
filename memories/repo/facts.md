@@ -73,7 +73,20 @@ docs/
 - **Branching:** Gitflow + Conventional Commits — see `docs/decisions/0001-gitflow-and-conventional-commits.md`.
   Task branches cut from `develop`, PRs target `develop`; only `release/*` and
   `hotfix/*` target `main`. CI (`.github/workflows/ci.yml`, job `analyze-test`)
-  runs on PRs into `main`/`develop` and on pushes to `develop`.
+  runs on PRs into `main`/`develop` and on pushes to `develop` and `main`.
+- **Validation surface:** QE validates **on `main`** (or on a `release/*` branch for
+  release-time defects) — see `docs/decisions/0002-validate-on-main.md`. Never on
+  `develop`, never on a `feat/*`/`fix/*` branch. Consequences: a task stays **In
+  review** from merge into `develop` until its release reaches `main`; `main`
+  auto-deploys, so a broken release is publicly live until QE rejects it and a
+  hotfix lands. Revisit trigger: two QE FAILs reaching production in one cycle.
+- **Workflow:** PM moves tasks to **Ready** on planning consensus (no branch
+  needed) → dev creates the branch off `develop`, writes the **acceptance
+  rubric**, implements, opens a PR to `develop` and moves the task **In review**
+  → ≤2 dev subagents review in parallel, **every push restarts the round**, the
+  implementor merges → PM cuts `release/*`, merges to `main` → DevOps deploys →
+  QE validates on `main` against the rubric → PASS = **Done** + DevOps deletes the
+  branch; FAIL = evidence + defect + back to **Ready** + PM schedules a dev ASAP.
 
 ## Previous session fixes (2026-10-06)
 

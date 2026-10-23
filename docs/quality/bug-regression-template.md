@@ -8,7 +8,13 @@
 Every confirmed bug gets a test that **fails before the fix and passes after it**. A
 bug is not "fixed" because the symptom vanished once on one machine — it is fixed when
 a test that reproduced it is green in `flutter test test/`. A fix PR without a
-regression test is rejected at QE review, whatever its severity.
+regression test is rejected at review, whatever its severity.
+
+**The QE rejection loop.** When QE finds a bug in a shipped change, it does not
+"reopen" anything: it attaches the evidence to the task, files the defect here,
+moves the task back to **`Ready`**, and notifies the PM. The PM re-prioritises
+(usually **P0**) and schedules a developer immediately. Nothing else moves a task
+backwards, and nothing sends it anywhere but `Ready`.
 
 ## 2. Issue template
 

@@ -148,6 +148,7 @@ New ADR: `docs/decisions/0001-gitflow-and-conventional-commits.md` (status
 `accepted`).
 
 - `main` = production, deploys on push. `develop` = integration, QE validates here.
+  *(Superseded by Phase 6 / ADR 0002: QE validates on `main`, not `develop`.)*
 - Task branches cut from `develop`, PRs target `develop`.
 - `release/<version>` and `hotfix/<version>` are the only branches that target
   `main`, and both are **back-merged into `develop`** in the same session.
@@ -182,3 +183,58 @@ seven agent files (one deleted, six rewritten), and the repo/session memories.
 2. Create `develop` on the remote and protect it identically to `main`.
 3. Branch protection on `main` — proposal only, not applied.
 4. `v1.0.0` tag — PM's job, release gate not yet run.
+
+---
+
+## Phase 6 — the Product Owner's real workflow (2026-10-23, later)
+
+The Product Owner dictated the actual handoff model. It contradicted parts of
+Phase 5, so the charter and all seven agent files were rewritten around it.
+
+### The four handoffs, verbatim intent
+
+1. **PM** — triages/prioritises and moves tasks to **Ready** once the team agrees
+   in planning. **No branch required for Ready.**
+2. **Developer** (SME by domain) — intakes from Ready, creates the branch, writes
+   the **acceptance rubric**, implements, updates docs, opens a PR, moves the task
+   to **In review**. Review uses **at most two dev subagents in parallel** judging:
+   sound · aligned with architecture · composable · maintainable (not over-engineered)
+   · readable (self-documenting) · inline-documented where non-trivial. The
+   implementor reconciles and merges. **Every push starts a new review round.**
+3. **QE** — validates **after the PR is merged to `main`** (or to `release/*` for a
+   release-time bug), **never** on `develop` or a task branch. PASS → **Done**;
+   FAIL → evidence in the ticket + defect + back to **Ready** + notify PM, who
+   schedules a developer ASAP.
+
+### Decisions taken
+
+- **QE owns `Done`.** The dev paragraph also said "moves the task to Done", which
+  contradicts handoff 3. Judged a slip: a merged PR is unverified, and handoff 3 is
+  the detailed, internally consistent one. **Flagged to the owner — trivially
+  reversible.**
+- **Validation surface = `main`.** Recorded as
+  `docs/decisions/0002-validate-on-main.md`. Features land in `develop`, so a task
+  sits **In review** from merge until its release reaches `main`. Long feedback
+  loop, accepted.
+- **Auto-deploy kept.** `main` still deploys on every push, so QE validates the
+  live artifact. Accepted risk: a broken release is publicly visible until QE
+  rejects it and a hotfix lands. Revisit trigger logged in ADR 0002 and the DevOps
+  agent (two production QE FAILs in one cycle → propose gating `main` on the verdict).
+- **Release order inverted.** The PM can no longer require "all tasks Done" before
+  cutting a release — impossible when QE validates post-merge. New order: merge →
+  deploy → QE PASS → **tag** `vX.Y.Z` → back-merge → delete branch.
+- **Branch naming split preserved.** DevOps still names the branch and assigns it;
+  the **developer creates** it on intake.
+
+### Files changed this phase
+
+`docs/agent-team.md` (§2–§7, §10, §12–§14 incl. a fully redrawn flowchart),
+all seven `.github/agents/*.agent.md`, `AGENTS.md`, `docs/project-board.md`,
+`docs/decisions/0001-…md` (amendment), `docs/decisions/0002-validate-on-main.md`
+(new), `docs/quality/release-checklist.md`, `docs/quality/test-strategy.md`,
+`docs/quality/bug-regression-template.md`, and the repo memories.
+**Still no `lib/`, `test/`, or `pubspec.yaml` changes.**
+
+### Still awaiting the Product Owner
+
+Unchanged from Phase 5 — plus: confirm that **QE, not the developer, owns `Done`**.

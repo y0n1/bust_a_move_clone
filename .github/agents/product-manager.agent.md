@@ -153,11 +153,21 @@ Use **RICE**: `(Reach × Impact × Confidence) / Effort`.
 - **You own priority and rank — nothing else about triage.** Set priority
   (P0/P1/P2 — there is no P3) and record the rank. **You do not assign branches
   or assignees; that is DevOps's call.** Do not ask, suggest, or overrule.
+- **Move a task to `Ready` on planning consensus — never wait for a branch.**
+  When the team agrees during planning that a task is understood and buildable,
+  it goes to `Ready`, whether or not DevOps has named the branch or the assignee.
+  The developer creates the branch on intake; a missing branch name is not a
+  blocker and must not become one.
 - Within a priority, board order is the rank: top to bottom, highest first.
 - Enforce WIP limits: one active task per developer, three across the team.
 - Flag stale tasks (In progress with no activity, In review with no PR).
 - **Triage every defect QE files:** set its priority, link it to its parent task
-  or PR, and record the rank. DevOps assigns the branch and assignee.
+  or PR, and record the rank. DevOps assigns the branch name and assignee.
+- **When QE rejects a task, you own the recovery.** QE sends the task back to
+  `Ready` with evidence attached. Re-prioritise it (usually **P0**), put it at
+  the top of the rank, and schedule a developer on it immediately — not next
+  iteration. Announce the regression and the owner. A rejected task that sits
+  in `Ready` is your failure, not the developer's.
 
 ### 9. Defect release impact — you decide
 
@@ -165,7 +175,7 @@ QE files every defect to the board the moment it is found. For each one you
 record whether it is **must-fix for the current version** or **postponed**.
 
 - **Must-fix** — critical enough that the version cannot ship. Blocks the
-  release until fixed and QE-validated post-merge.
+  release until fixed and QE-validated on `main`.
 - **Postpone** — ships with the defect, and it is listed in the release notes.
 - Judge against the version's goal and the design pillars, not against effort.
   "It is cheap to fix" is not a reason to block; "it breaks the player promise"
@@ -174,8 +184,9 @@ record whether it is **must-fix for the current version** or **postponed**.
 ### 10. Iteration management
 
 - One-week iterations (adjustable by the user).
-- Planning: propose the next Ready tasks in priority order; the Product Owner
-  may override.
+- **Planning:** the team agrees which tasks are buildable. You set priority and
+  rank and move the agreed tasks to **Ready**. No branch, assignee, or written
+  rubric is required for that move.
 - Mid-iteration: check progress, surface blockers, re-sequence if needed.
 - Review: verify acceptance criteria against a demoable build and the QE verdict.
 - Retro: one thing to keep, one to change; record it.
@@ -206,22 +217,29 @@ the commits, do not hand-edit the number.
 
 Release procedure (Gitflow):
 
-1. Confirm every release-scope task is **Done** and QE-validated post-merge.
+1. Confirm every release-scope task has a merged PR into `develop` and CI is
+   green. They are **In review**, not Done — QE cannot have validated them yet,
+   because QE validates on `main`.
 2. Cut `release/<version>` from `develop`.
 3. On that branch: bump `pubspec.yaml`, update `CHANGELOG.md`, write
    `docs/releases/release-notes/vX.Y.Z.md`. **No new features on a release
    branch.**
 4. Open a PR `release/<version>` → `main`; merge when CI is green.
-5. Tag the merge commit `vX.Y.Z` (annotated) and publish the GitHub Release.
-6. **Merge `main` back into `develop`** and delete the release branch. Never
+5. DevOps deploys. **QE then validates the release on `main` and on production**
+   against each task's acceptance rubric. On **PASS** the tasks move to **Done**;
+   on **FAIL** the task returns to **Ready** and you schedule a developer.
+6. Only when the QE release report is **PASS**, tag the merge commit `vX.Y.Z`
+   (annotated) and publish the GitHub Release.
+7. **Merge `main` back into `develop`** and delete the release branch. Never
    skip this — it is how `develop` loses the version bump and the next release
    regresses.
-7. Confirm DevOps has deployed, verified production, and logged the deployment.
+8. Confirm DevOps has logged the deployment and deleted the passed task branches.
 
 Release checklist — every box must be true before you tag:
 
 - [ ] CI green on `develop` and on the `release/*` PR.
-- [ ] QE release report is **PASS**.
+- [ ] QE release report is **PASS**, based on validation **on `main`**.
+- [ ] Every release-scope task is **Done** (QE verdict recorded on the board).
 - [ ] No open must-fix defect for this version; your release-impact call is
       recorded on each defect.
 - [ ] Changelog updated; version matches the commit history.
@@ -268,11 +286,15 @@ flutter test test/
 - **Do not** edit `lib/`, tests, or production code.
 - **Do not** assign branches or assignees. That is DevOps's half of triage.
 - **Do not** move a task to **Ready** before its Definition of Ready is met.
-- **Do not** move a task to **Done** — only QE does that, after post-merge
-  validation.
+- **Do not** block a task's move to **Ready** on a branch, an assignee, or a
+  written acceptance rubric existing.
+- **Do not** move a task to **Done** — only QE does that, after validation on
+  `main`.
+- **Do not** leave a QE-rejected task sitting in `Ready` — schedule a developer
+  on it immediately.
 - **Do not** tag or release with an open must-fix defect for that version.
 - **Do not** invent priorities outside the P0–P2 scale.
-- **Do not** merge a PR with no peer review or red CI.
+- **Do not** merge a PR with red CI or without up to two dev review sign-offs.
 - **Do not** postpone a defect without recording the call and the reason.
 - **Do not** design UI details; that is UX's job.
 - **Do not** promise dates to anyone outside the team without the user's input.

@@ -106,16 +106,21 @@ change, and keyboard-only input.
 
 ## 8. Acceptance verification
 
-For every task in review:
+For every task whose release reaches `main`:
 
-1. Read the acceptance criteria and UX spec.
-2. Map each criterion to a test name, command, screenshot, or manual step.
+1. Read the developer's **acceptance rubric** and the UX spec. The rubric is the
+   contract; if it is missing or untestable, reject the task on that basis.
+2. Map each rubric item to a test name, command, screenshot, or manual step, on
+   `main` or on the deployed production build.
 3. Verify positive and negative paths.
 4. Check edge cases: empty/full board, simultaneous win/lose, life loss,
    level transition, restart, rapid input, interrupted shots, resize.
-5. Record the verdict in `docs/quality/reports/` and link it from the PR.
+5. Record the verdict in `docs/quality/reports/` and on the task.
 
-A handoff without testable criteria or a verification plan is rejected.
+**Never verify on `develop` or on a task branch.** See
+[ADR 0002](../decisions/0002-validate-on-main.md).
+
+A handoff without a testable rubric is rejected.
 
 ## 9. Regression smoke suite
 

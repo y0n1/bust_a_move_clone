@@ -36,17 +36,17 @@ says "PMs" it means that role, or several PM agents sharing it.
 | **Engine Developer** | `.github/agents/engine-developer.agent.md` | Pure-Dart game rules, determinism, performance, engine tests | `lib/game/`, engine tests | read, search, edit, execute |
 | **Flutter Developer** | `.github/agents/flutter-developer.agent.md` | Flutter UI, rendering, animation, input, ViewModels, web polish | `lib/gameplay/ui/`, `lib/start_screen/`, ViewModels | read, search, edit, execute |
 | **Multiplayer Developer** | `.github/agents/multiplayer-developer.agent.md` | Real-time netcode, protocol, sync, matchmaking, anti-cheat | future `lib/net/`, `server/`, net tests | read, search, edit, execute |
-| **Quality Engineer (QE)** | `.github/agents/quality-engineer.agent.md` | E2E validation of every merged PR, test strategy, regression, release sign-off | `docs/quality/`, `test/quality/`, validation reports | read, search, edit, execute |
-| **DevOps Engineer** | `.github/agents/devops-engineer.agent.md` | CI/CD, GitHub Pages deployment, **branch and assignee assignment**, observability, rollback, production health | `.github/workflows/`, `docs/ops/`, branch & assignee fields, production | read, search, edit, execute |
+| **Quality Engineer (QE)** | `.github/agents/quality-engineer.agent.md` | E2E validation against the acceptance rubric **once code is on `main`**, test strategy, regression, release sign-off | `docs/quality/`, `test/quality/`, validation reports | read, search, edit, execute |
+| **DevOps Engineer** | `.github/agents/devops-engineer.agent.md` | CI/CD, GitHub Pages deployment, **branch naming & assignee assignment**, branch cleanup, observability, rollback, production health | `.github/workflows/`, `docs/ops/`, branch & assignee fields, production | read, search, edit, execute |
 
 ### What each role must never do
 
 | Role | Never |
 |------|-------|
-| PM | Write production code, edit `lib/`, **assign branches or assignees**, merge a PR with no peer review |
+| PM | Write production code, edit `lib/`, **assign branches or assignees**, block **Ready** on a branch existing, merge a PR with no peer review |
 | UX | Edit `lib/`, dictate engine internals, triage the board, commit |
-| Developers | Invent priorities outside the PM's rank, commit to `main` or `develop`, self-merge without a peer review |
-| Quality Engineer | Edit `lib/` or production config, weaken tests, pass a PR without exercising it E2E, **fix** a defect instead of filing it |
+| Developers | Invent priorities outside the PM's rank, commit to `main` or `develop`, self-merge without a peer review, **move a task to Done** |
+| Quality Engineer | Edit `lib/` or production config, weaken tests, validate on `develop` or a feature branch, pass a change without exercising it E2E, **fix** a defect instead of filing it |
 | DevOps Engineer | Edit `lib/` or tests, weaken quality gates, **set priority**, change production/secrets/billing without approval, deploy unverified, deploy with an open must-fix defect |
 
 ---
@@ -61,7 +61,8 @@ says "PMs" it means that role, or several PM agents sharing it.
 | Competitive analysis | I | A/R | C | — | — | — | I | I |
 | Backlog prioritization (proposal) | C | R | C | C | C | C | C | C |
 | **Task triage — priority & rank** | C | **A/R** | C | C | C | C | C | C |
-| **Task triage — branch & assignee** | I | — | — | C | C | C | C | **A/R** |
+| **Task triage — branch name & assignee** | I | — | — | C | C | C | C | **A/R** |
+| **Acceptance rubric authoring** | I | C | C | R† | R† | R† | C | — |
 | Board grooming & status | I | **A/R** | — | — | — | — | C | C |
 | Progress reporting | I | **A/R** | — | — | — | — | C | C |
 | Defect intake and filing to the board | I | C | — | — | — | — | **A/R** | C |
@@ -76,14 +77,18 @@ says "PMs" it means that role, or several PM agents sharing it.
 | CI/CD & deployment | A* | I | — | C | C | C | C | A/R |
 | Production operations & monitoring | I | — | — | — | — | — | C | A/R |
 | Commit & push (own branch) | I | — | — | R | R | R | R | R |
-| **PR review & merge** | I | A | — | R | R | R | C | R |
-| **Post-merge E2E validation** | I | C | — | C | C | C | **A/R** | C |
+| **PR review (max 2 dev subagents, parallel)** | I | C | C | R | R | R | C | C |
+| **PR merge** | I | C | — | R† | R† | R† | C | C |
+| **Post-merge E2E validation (on `main`)** | I | C | — | C | C | C | **A/R** | C |
 | Release verification & sign-off | C | C | I | C | C | C | A/R | R |
 | Versioning, tagging & release | I | **A/R** | I | C | C | C | C | R |
 
 \* The user approves only irreversible or high-cost technical decisions; routine
 implementation choices belong to the developers, and routine pipeline changes
 belong to DevOps.
+
+† Applies to whichever developer owns the task. The implementor authors the
+rubric and merges; the **other** developers review it.
 
 ### Decision rights (fast path)
 
@@ -93,9 +98,11 @@ belong to DevOps.
 - **Quality verdict / release readiness:** QE decides PASS, CONDITIONAL, or FAIL; the user can override only with recorded risk acceptance.
 - **Infrastructure / deployment approach:** DevOps decides; irreversible or costly changes go to the user.
 - **Task priority and rank:** the PM decides and records it. The Product Owner may override at any time.
-- **Task branch and assignee:** DevOps decides. The PM does not set them and is not consulted on them.
-- **Commit, review, push, merge:** the team decides. A PR merges when CI is green and a peer has reviewed it. No user approval is needed.
-- **Post-merge validation:** QE decides whether a merged PR actually works. A merged PR is not a Done task.
+- **Task branch and assignee:** DevOps decides the name and the assignee. The PM does not set them and is not consulted on them. The **dev agent creates the branch** on intake — a missing branch never blocks **Ready**.
+- **Acceptance rubric:** the owning developer writes it before implementing, from the acceptance criteria agreed at planning. QE validates against it.
+- **Commit, review, push, merge:** the team decides. A PR merges when CI is green and up to two dev reviewers have signed off. No user approval is needed.
+- **Post-merge validation:** QE decides whether the change actually works, and does so on `main` (or `release/*` for a release-time bug), never on `develop` or a feature branch. A merged PR is not a Done task.
+- **Rejection:** QE rejecting a change returns it to **Ready** with evidence, and notifies the PM. The PM re-prioritizes and schedules a developer immediately.
 - **Versioning, tags, and releases:** the PM decides and executes, provided the release checklist and quality gates pass.
 - **Defect release-blocking status:** the PM decides whether a defect must be fixed in the current version or postponed.
 - **Irreversible or cross-cutting:** user decides after a one-page ADR.
@@ -108,28 +115,39 @@ belong to DevOps.
 flowchart TD
     A[PM discovery<br/>brief] --> B[UX design<br/>spec]
     B --> C[PM task breakdown<br/>+ priority & rank]
-    C --> D{DevOps triage<br/>branch + assignee}
-    D --> E[Developer<br/>worktree + branch off develop]
-    E --> F[Implementation<br/>tests + analyze]
-    F --> G[PR into develop<br/>+ CI]
-    G --> H{Peer review<br/>+ CI green?}
-    H -- changes --> E
-    H -- approved --> I[Merge into develop]
-    I --> J{QE E2E validation<br/>on develop}
-    J -- fail --> Q[QE files defect<br/>PM triages] --> E
-    J -- pass --> N[Task Done]
-    N --> O[PM cuts release/x.y.z<br/>version + changelog]
-    O --> P[PR release to main<br/>+ tag vX.Y.Z]
-    P --> R[DevOps deploy<br/>GitHub Pages]
-    R --> S{Production<br/>verified?}
-    S -- no --> T[Rollback<br/>+ incident]
-    S -- yes --> U[Deployment log<br/>+ back-merge to develop]
-    U --> A
+    C --> D{Planning:<br/>team agrees?}
+    D -- no --> C
+    D -- yes --> E[PM moves task to Ready<br/>branch NOT required]
+    E --> F[DevOps assigns<br/>branch name + assignee]
+    F --> G[Dev intakes from Ready<br/>creates branch off develop]
+    G --> H[Dev writes<br/>acceptance rubric]
+    H --> I[Implementation<br/>tests + analyze + docs]
+    I --> J[PR into develop<br/>task to In review]
+    J --> K{Review round<br/>max 2 dev subagents, parallel}
+    K -- changes requested --> L[Implementor reconciles gaps]
+    L --> I
+    K -- disputes settled --> M[Implementor merges<br/>task STAYS In review]
+    M --> N[PM cuts release/x.y.z<br/>version + changelog]
+    N --> O[PR release to main<br/>+ tag vX.Y.Z]
+    O --> P[DevOps deploy<br/>GitHub Pages]
+    P --> Q{QE E2E validation<br/>on main, against rubric}
+    Q -- fail --> R[Evidence in the ticket<br/>task to Ready<br/>PM schedules dev ASAP]
+    R --> G
+    Q -- pass --> S[Task Done<br/>DevOps deletes the branch]
+    S --> T{Production<br/>verified?}
+    T -- no --> U[Rollback<br/>+ incident]
+    T -- yes --> V[Deployment log<br/>+ back-merge to develop]
+    V --> A
 ```
 
-> **The merge is not the finish line.** A PR merged into `develop` is *unverified*.
-> It becomes **Done** only after QE has exercised it end-to-end on the target
-> branch and passed it.
+> **The merge is not the finish line.** A merged PR is *unverified*. The dev agent
+> that merges it leaves the task in **In review**. It becomes **Done** only after
+> QE has exercised it end-to-end on `main` against the acceptance rubric the
+> developer wrote.
+>
+> **QE does not validate on `develop` or on feature branches.** Validation happens
+> on the integrated, shippable artifact: `main` normally, `release/*` when a
+> defect surfaces during a release.
 
 ### Stage contracts
 
@@ -137,23 +155,27 @@ flowchart TD
 |-------|-------|-------------------|----------------|
 | **Discovery** | PM | `docs/product/briefs/YYYY-MM-DD-<slug>.md` | Problem, evidence, user value, acceptance criteria, metrics, scope, risks |
 | **Design** | UX | `docs/design/specs/<slug>.md` | Flow, states, layout, interaction, motion, feedback, accessibility, acceptance checklist |
+| **Planning** | PM + whole team | Board item at **Ready** | Priority and rank set; the team agrees the task is ready to build |
 | **Technical plan** | Owning dev | Task body or `docs/decisions/NNNN-<slug>.md` | Files, approach, test plan, risks, dependencies |
-| **Delivery** | Owning dev | Branch + PR into `develop` + tests | CI green, acceptance criteria met, handoff written |
-| **Peer review** | Any other team member | Review comments on the PR | Diff read, approach sound, tests meaningful, no gate weakened |
-| **E2E validation** | QE | `docs/quality/reports/YYYY-MM-DD-<scope>.md` | The feature or fix exercised end-to-end on the merged branch; every acceptance criterion mapped to evidence; defects filed; verdict PASS |
-| **Release prep** | PM | `CHANGELOG.md`, version bump, `release/*` branch, tag, release notes | QE PASS, no open must-fix defect, version matches Conventional Commits history |
+| **Acceptance rubric** | Owning dev | `## Acceptance rubric` section on the task or PR | Every criterion is observable and testable by QE against the built artifact |
+| **Delivery** | Owning dev | Branch + PR into `develop` + tests + docs | CI green, acceptance criteria met, handoff written, task at **In review** |
+| **Peer review** | Up to 2 dev subagents, in parallel | Review comments on the PR | Sound; aligned with architecture and patterns; composable; maintainable (no needless complexity); readable/self-documenting; inline-documented where non-trivial |
+| **Reconciliation & merge** | Owning dev | Re-review round per push, then merge commit | Every review comment resolved or explicitly disputed and settled; CI green |
+| **E2E validation** | QE | `docs/quality/reports/YYYY-MM-DD-<scope>.md` | Exercised end-to-end on `main` (or `release/*`); every rubric item mapped to evidence; verdict PASS/FAIL |
+| **Release prep** | PM | `CHANGELOG.md`, version bump, `release/*` branch, tag, release notes | No open must-fix defect, version matches Conventional Commits history |
 | **Deployment** | DevOps | `docs/ops/deployment-log.md` entry | Deploy workflow green, production smoke test passed, rollback still valid |
-| **Closure** | PM | Board **Done**, changelog, status report, back-merge done | Production verified and `develop` re-synced |
+| **Closure** | QE + DevOps + PM | Board **Done**, branch deleted, changelog, status report, back-merge done | QE PASS recorded, production verified, `develop` re-synced |
 
 ### Handoff rules
 
 1. Every handoff is a **file**, not a conversation. If it is not written down, it did not happen.
 2. The receiving role may ask **one round** of clarifying questions; unanswered questions become documented assumptions.
 3. A handoff is rejected if it lacks acceptance criteria or a verification plan.
-4. The PM owns *what*, *why*, and *when it ships*; UX owns *how it feels*; developers own *how it works*; QE owns *whether it actually works once merged*; DevOps owns *how it reaches and stays in production* and *which branch and assignee each task gets*.
-5. A PR merges when CI is green and a peer has reviewed it. No QE verdict is required to merge — QE validates **after** the merge. No release is tagged without a QE **PASS** and no open must-fix defect for that version.
-6. No deployment is considered complete until DevOps has verified the production URL and recorded the evidence.
-7. A task is not **Done** until QE has validated it post-merge. A merged, unvalidated PR is **In review**, not Done.
+4. The PM owns *what*, *why*, and *when it ships*; UX owns *how it feels*; developers own *how it works* **and how it will be judged** (the rubric); QE owns *whether it actually works on `main`*; DevOps owns *how it reaches and stays in production*, *which branch and assignee each task gets*, and *deleting the branch once QE passes*.
+5. A PR merges when CI is green and up to two dev reviewers have signed off. No QE verdict is required to merge — QE validates **after** the change reaches `main`. No release is tagged without a QE **PASS** and no open must-fix defect for that version.
+6. **Every push to a PR starts a new review round.** A reviewer's approval covers the diff they saw, not later commits.
+7. No deployment is considered complete until DevOps has verified the production URL and recorded the evidence.
+8. A task is not **Done** until QE has validated it on `main`. A merged, unvalidated change is **In review**, not Done. If QE rejects it, the task returns to **Ready** — not to In progress — with the evidence attached.
 
 ---
 
@@ -164,15 +186,16 @@ Board reference: [`docs/project-board.md`](project-board.md).
 | Column | Meaning | Who moves it |
 |--------|---------|--------------|
 | **Backlog** | Not started: lower priority, or blocked | PM / QE (defects) |
-| **Ready** | Triaged: priority + rank (PM), branch + assignee (DevOps), acceptance criteria | PM once DoR is met; DevOps fills branch and assignee |
-| **In progress** | Branch checked out, work underway | Developer |
-| **In review** | PR open for peer review, **or** merged and awaiting QE E2E validation | Developer / QE |
-| **Done** | QE validated post-merge and, for releases, production verified | QE / PM |
+| **Ready** | Triaged and agreed at planning: priority + rank (PM), acceptance criteria. **A branch is not required.** | PM once the team agrees; DevOps adds branch name + assignee whenever it is ready |
+| **In progress** | Branch created, work underway | Developer |
+| **In review** | PR open for review, **or** merged and awaiting QE validation on `main` | Developer / QE |
+| **Done** | QE validated on `main` against the acceptance rubric | **QE only** |
 
 Hard rules:
 
 - **Only Ready tasks are implemented.** No Ready tasks → the team reports the gap and stops.
-- **Triage is split, not shared.** The **PM** sets priority and rank. **DevOps** sets branch and assignee. Neither does the other's half, and the PM is not consulted on branches or assignees.
+- **Ready does not wait for a branch.** The PM moves a task to **Ready** on planning consensus even when no branch exists yet. The **dev agent creates the branch** on intake.
+- **Triage is split, not shared.** The **PM** sets priority and rank. **DevOps** sets the branch name and assignee. Neither does the other's half, and the PM is not consulted on branches or assignees.
 - **Priority uses the project's own scale: P0, P1, P2.** There is no P3 — low-priority work is P2.
 - **Within a priority, board order is the rank:** top to bottom, highest first. When two items share a priority, the one higher on the board is worked first.
 - **Assignee may be blank** while delivery is agent-only. A blank assignee does not block **Ready**.
@@ -180,7 +203,8 @@ Hard rules:
 - **Never commit to `main` or `develop` directly.** All work lands through a pull request, per the Gitflow model in §10.
 - **WIP limit:** one active task per developer, three across the team.
 - Every task links its brief/spec and states a test plan.
-- **A merged PR is not a finished task.** The task stays **In review** after merge until QE validates it end-to-end on the target branch. Only QE moves it to **Done**.
+- **A merged PR is not a finished task.** The implementor merges and leaves the task in **In review**. Only QE moves it to **Done**, and only after validating on `main`.
+- **Rejection returns to Ready.** A QE rejection puts the task back in **Ready** with evidence attached and notifies the PM, who re-prioritizes and schedules a developer immediately.
 - **Release tasks stay open until DevOps verifies production.** A green deploy workflow alone is not verification.
 - The board is updated as part of delivery, not afterthought.
 
@@ -196,14 +220,15 @@ the version being released blocks production.**
    QE never fixes a defect and never holds one back until the end of a report.
 2. **PM triages priority and links.** The PM sets the priority, links the defect
    to its parent task or PR, records the rank, and places it on the board.
-3. **DevOps assigns branch and assignee.** DevOps picks the branch (usually
-   `fix/<slug>` off `develop`) and the assignee. The PM does not.
+3. **DevOps assigns branch name and assignee.** DevOps picks the branch (usually
+   `fix/<slug>` off `develop`) and the assignee. The PM does not. The developer
+   creates the branch on intake.
 4. **PM decides release impact.** For each defect the PM records one of:
    - **Must-fix for the current version** — critical: blocks the release.
    - **Postpone** — ships with the defect recorded in the release notes.
 5. **Release gate.** No production release while a must-fix defect for that
    version is open. The PM may not tag and DevOps may not deploy until it is
-   fixed and QE has validated the fix post-merge.
+   fixed and QE has validated the fix on `main` or on the `release/*` branch.
 6. **Regression test.** The fix ships with a test that failed before it, per
    the bug regression template.
 
@@ -222,7 +247,7 @@ Every Ready task must contain:
 - [ ] ...
 ## Test plan
 ## Out of scope
-## Priority (PM) / branch + assignee (DevOps)
+## Priority (PM) / branch name + assignee (DevOps)
 ```
 
 ---
@@ -232,27 +257,33 @@ Every Ready task must contain:
 A task may enter **Ready** only when all are true:
 
 - [ ] Problem and player value are stated.
-- [ ] Acceptance criteria are testable, and the E2E check QE will run is named.
+- [ ] Acceptance criteria are testable.
 - [ ] UX spec is linked (for any player-facing change).
 - [ ] Technical approach and touched layers are identified.
 - [ ] Priority (P0–P2) and rank are set by the **PM**.
-- [ ] Branch and assignee are set by **DevOps** (assignee may be blank while delivery is agent-only).
+- [ ] The team agrees the task is ready to build.
 - [ ] Dependencies and risks are listed.
-- [ ] Test/verification plan exists, including the QE acceptance checks.
+- [ ] Test/verification plan exists.
 - [ ] Release impact is identified: does this ship to production, and what is the rollback path?
 - [ ] Out-of-scope is explicit.
+
+**Not** required for Ready: a branch, an assignee, or a written acceptance rubric.
+The dev agent creates the branch and writes the rubric on intake; DevOps adds the
+branch name and assignee whenever it can. None of these block **Ready**.
 
 ## 7. Definition of Done (DoD)
 
 - [ ] Acceptance criteria met and mapped to evidence.
+- [ ] The dev agent's **acceptance rubric** is satisfied.
 - [ ] Tests added/updated; `flutter test test/` passes.
 - [ ] `flutter analyze --fatal-infos` is clean.
-- [ ] PR reviewed by a peer and merged into `develop`.
-- [ ] **QE validated the change end-to-end on `develop`; verdict PASS.**
+- [ ] PR reviewed by up to two dev subagents and merged into `develop` by the implementor.
+- [ ] **QE validated the change end-to-end on `main`; verdict PASS.**
 - [ ] UX spec fidelity verified for player-facing work.
 - [ ] No open must-fix defect for the current version; postponed defects recorded in the release notes.
 - [ ] Architecture/docs/ADR updated; `docs/ops/` updated for infrastructure changes.
 - [ ] Board moved to **Done** by QE.
+- [ ] Task branch deleted by DevOps.
 - [ ] `CHANGELOG.md` entry added for user-facing changes.
 - [ ] For releases: deployed, production verified by DevOps, entry in `docs/ops/deployment-log.md`, and `main` back-merged into `develop`.
 - [ ] No regression in existing behavior; performance budget respected.
@@ -363,7 +394,7 @@ Two conventions govern this repository. Both are recorded in
 | Branch | Lifetime | Cut from | Merges into | Purpose |
 |--------|----------|----------|-------------|---------|
 | `main` | permanent | — | — | Production. Every commit is released and deployed. |
-| `develop` | permanent | `main` (once) | — | Integration. Every task lands here; QE validates here. |
+| `develop` | permanent | `main` (once) | — | Integration. Every task lands here; releases are cut from here. QE does **not** validate here. |
 | `feat/`, `fix/`, `docs/`, `ci/`, `refactor/`, `test/` | short | `develop` | `develop` | One task, one branch, one PR. |
 | `release/<version>` | short | `develop` | `main` **and** `develop` | Version bump, changelog, release notes only. |
 | `hotfix/<version>` | short | `main` | `main` **and** `develop` | Production emergency only. |
@@ -409,7 +440,7 @@ subject under 72 characters, body explains **why**.
 
 ### Release checklist
 
-- [ ] All release-scope tasks are **Done** and QE-validated post-merge.
+- [ ] All release-scope tasks are QE-validated **on `main`** (or on the `release/*` branch for release-time fixes).
 - [ ] CI green on `develop` and on the `release/*` PR.
 - [ ] QE release report is **PASS** (or CONDITIONAL accepted in writing by the user).
 - [ ] No open must-fix defect for this version; the PM's release-impact call is recorded.
@@ -428,7 +459,7 @@ subject under 72 characters, body explains **why**.
 |------|-------|----------------|--------|
 | **CI** | DevOps / developers | Analyze clean, tests pass, production build succeeds | Merge |
 | **Peer review** | Team (not the author) | Diff read, approach sound, tests meaningful, no gate weakened | Merge |
-| **E2E acceptance** | QE | The feature or fix exercised end-to-end on the merged branch; every acceptance criterion mapped to evidence | **Done** |
+| **E2E acceptance** | QE | The feature or fix exercised end-to-end on `main` (or `release/*`) against the dev's acceptance rubric; every rubric item mapped to evidence | **Done** |
 | **Release-blocking defects** | QE + PM | No open must-fix defect for the version; postponed ones recorded | Release |
 | **Regression** | QE | Critical-path smoke suite passes | Done / release |
 | **Compatibility** | QE | Chrome, Firefox, Safari, Edge + desktop/mobile viewports | Release |
@@ -483,7 +514,7 @@ memories/                Persistent cross-session knowledge
 | Discovery | “PM: analyze the bubble-shooter market and propose the next three features.” |
 | Design | “UX: turn brief `docs/product/briefs/...` into an implementation-ready spec.” |
 | Delivery | “Engine Developer: implement task #N from the board; branch `feat/...`.” |
-| Quality | “Quality Engineer: PR #M is merged into `develop`. Validate it end-to-end against its acceptance criteria and give a PASS/FAIL verdict.” |
+| Quality | “Quality Engineer: PR #M is merged to `main`. Validate it end-to-end against the acceptance rubric and give a PASS/FAIL verdict.” |
 | Release gate | “Quality Engineer: run the release checklist for v0.X.0 and write the verification report.” |
 | Deploy | “DevOps Engineer: verify the production deploy at https://y0n1.github.io/bust_a_move_clone/ and log it.” |
 | Status | “PM: report progress and flag anything blocking Ready work.” |
@@ -502,8 +533,11 @@ memories/                Persistent cross-session knowledge
 - No Flutter imports in `lib/game/`.
 - No non-deterministic randomness in the engine.
 - No business rules in widgets; Views never call `Engine` directly.
-- No merge without CI green and a peer review; no release without QE **PASS**.
-- No task marked **Done** before QE has validated it end-to-end post-merge.
+- No merge without CI green and up to two dev review sign-offs; no release without QE **PASS**.
+- No task marked **Done** before QE has validated it end-to-end on `main`.
+- No QE validation on `develop` or on a feature branch.
+- No blocking **Ready** on a branch existing — the dev creates it on intake.
+- No task sent back from QE to anywhere other than **Ready**.
 - No deploy without a green pipeline and post-deploy production verification.
 - No weakening, skipping, or silencing quality gates to hit a date.
 - No production, secret, domain, or billing changes without user approval.
@@ -519,9 +553,9 @@ memories/                Persistent cross-session knowledge
 3. **QE** publishes the test strategy and a baseline verification report for the current build.
 4. **DevOps** publishes the deployment runbook, production health baseline, and first deployment-log entry.
 5. **PM** publishes the roadmap and a triage proposal covering product, quality, and platform work.
-6. **PM** sets priority and rank; **DevOps** sets branch and assignee. Tasks then enter **Ready**; the Product Owner may override.
-7. **Developers** pick Ready tasks in priority order, one worktree per task, branching off `develop`.
-8. **QE** validates every PR end-to-end after it merges; **DevOps** deploys and verifies each release; **PM** reports progress and prepares the next release.
+6. **PM** sets priority and rank and moves tasks to **Ready** on planning consensus — no branch required. **DevOps** adds the branch name and assignee. The Product Owner may override.
+7. **Developers** pick Ready tasks in priority order, one worktree per task, creating the branch off `develop` and writing the acceptance rubric before writing code.
+8. **QE** validates every change end-to-end on `main` after it merges; **DevOps** deploys, verifies each release, and deletes task branches; **PM** reports progress and prepares the next release.
 
 > The team may research and design before triage. It may **not** implement
 > before a task is Ready.

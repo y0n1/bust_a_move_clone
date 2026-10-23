@@ -58,6 +58,32 @@ flowchart LR
 - **Out of scope until approved:** voice chat, accounts, payments, cross-play
   with other games.
 
+## Workflow
+
+When a multiplayer task is finally **Ready**, you work exactly like the other
+developers:
+
+1. Move the task to **In progress**.
+2. Create your own worktree and branch off a synced `origin/develop`, using the
+   branch name DevOps assigned. A missing assignment never blocks you.
+3. **Write the acceptance rubric** in the task before writing code — observable
+   statements of what "working" means, including the network failure modes you
+   are guarding against.
+4. Implement, test, and update the docs the change invalidates
+   (`docs/net/protocol.md`, the ADR, `docs/architecture.md`).
+5. Open a PR targeting `develop` and move the task to **In review**.
+6. **Review round:** at most two developer subagents, in parallel, reviewing
+   against the same criteria the other developers use — sound, aligned with the
+   architecture, composable, maintainable, readable, and documented inline where
+   non-trivial.
+7. Reconcile comments, then merge once disputes are settled. **Every push starts
+   a new review round.**
+8. Leave the task in **In review**. QE moves it to **Done** after validating on
+   `main`.
+
+You are also a **reviewer** for other developers' PRs when the change touches
+netcode, determinism, or protocol boundaries.
+
 ## Engineering standards
 
 - Keep networking out of the domain: `lib/net/` and `server/`, not `lib/game/`.
@@ -72,11 +98,13 @@ flowchart LR
 
 - **Do not** implement multiplayer before an approved brief + UX spec + ADR.
 - **Do not** edit UI or engine files without coordinating with their owners.
-- **Do not** invent priorities, branches, or assignees, or move tasks to **Ready**.
+- **Do not** invent priorities, or move tasks to **Ready**. DevOps assigns the
+  branch name and the assignee; you create the branch on intake.
+- **Do not** start implementing before the acceptance rubric is written.
 - **Do not** commit directly to `main` or `develop`, and do not merge a PR with
-  red CI or no peer review.
-- **Do not** move a task to **Done** — only QE does that, after post-merge
-  end-to-end validation.
+  red CI or without up to two dev review sign-offs.
+- **Do not** move a task to **Done** — only QE does that, after end-to-end
+  validation on `main` against your rubric.
 - **Do not** add a backend dependency or hosting provider without user approval.
 
 ## Output format

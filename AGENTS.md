@@ -100,12 +100,20 @@ no separate project manager.
 
 - Only **Ready** tasks are implemented.
 - **Triage is split.** The **PM** sets priority (P0–P2) and rank. **DevOps** sets
-  the branch and assignee. Neither does the other's half.
+  the branch **name** and assignee. Neither does the other's half.
+- **`Ready` does not wait for a branch.** The PM moves a task to `Ready` on
+  planning consensus; the owning developer creates the branch on intake.
 - One task = one worktree = one branch = one PR, branched off `develop`.
-- The team **commits, reviews, pushes, and merges its own PRs**. The merge bar is
-  CI green plus one peer review — no user approval needed.
-- **QE validates every PR after it merges.** A merged PR is *unverified*; only QE
-  moves a task to **Done**.
+- The implementor writes an **acceptance rubric** in the task before writing
+  code. QE validates against that rubric.
+- The team **commits, reviews, pushes, and merges its own PRs**. Review is done
+  by **at most two developer subagents in parallel**; the merge bar is CI green
+  plus their sign-offs — no user approval needed. **Every push starts a new
+  review round.**
+- **QE validates on `main`, after the change ships** — never on `develop` and
+  never on a task branch. A merged PR is *unverified* and its task stays **In
+  review**; only QE moves a task to **Done**, and a rejection sends it back to
+  **Ready** for the PM to re-prioritise and schedule.
 - No direct commits to `main` or `develop`.
 - The **PM owns versioning, tags, and releases**.
 - PM/UX/QE/DevOps never write production code; DevOps verifies every production
@@ -118,8 +126,8 @@ Gitflow + Conventional Commits, recorded in
 
 | Branch | Cut from | Merges into | Purpose |
 |--------|----------|-------------|---------|
-| `main` | — | — | Production; deploys on push |
-| `develop` | `main` | — | Integration; QE validates here |
+| `main` | — | — | Production; deploys on push. **QE validates here.** |
+| `develop` | `main` | — | Integration. Every task lands here; releases are cut from here. |
 | `<type>/<slug>` | `develop` | `develop` | One task, one PR |
 | `release/<version>` | `develop` | `main` **and** `develop` | Version bump + changelog only |
 | `hotfix/<version>` | `main` | `main` **and** `develop` | Production emergency |
@@ -200,9 +208,13 @@ This project uses a **compounding knowledge base** pattern (Karpathy LLM Wiki). 
 - Do **not** implement anything without a **Ready** board task.
 - Do **not** triage outside the project's **P0–P2** scale — there is no P3. Within a priority, board order top-to-bottom is the rank.
 - Do **not** let PM, UX, QE, or DevOps roles edit `lib/`.
-- Do **not** merge without CI green and a peer review; do **not** release without
-  a QE **PASS**.
-- Do **not** mark a task **Done** before QE validates it end-to-end post-merge.
+- Do **not** merge without CI green and up to two dev review sign-offs; do **not**
+  release without a QE **PASS**.
+- Do **not** mark a task **Done** before QE validates it end-to-end on `main`.
+- Do **not** validate a change on `develop` or on a task branch.
+- Do **not** block a task's move to **Ready** on a branch, assignee, or written
+  rubric existing.
+- Do **not** send a QE-rejected task anywhere other than **Ready**.
 - Do **not** commit directly to `main` or `develop`; all work lands through a pull
   request, per [ADR 0001](docs/decisions/0001-gitflow-and-conventional-commits.md).
 - Do **not** tag or release outside the PM's release process.

@@ -11,10 +11,10 @@
 | Column | Meaning |
 |--------|---------|
 | **Backlog** | Not started: untriaged, lower priority, or blocked. No branch expected. |
-| **Ready** | Triaged: priority + rank (PM), branch + assignee (DevOps), acceptance criteria. Agents pick from here. |
-| **In progress** | Agent is actively working on the associated branch. |
-| **In review** | PR open for peer review, **or** merged and awaiting QE end-to-end validation. |
-| **Done** | QE validated the change end-to-end post-merge (and, for releases, production is verified). |
+| **Ready** | Triaged: priority + rank (PM) and acceptance criteria. **A branch is not required.** Agents pick from here. |
+| **In progress** | Agent is actively working on the task branch it created. |
+| **In review** | PR open for review, **or** merged into `develop` and waiting for its release to reach `main` so QE can validate it. |
+| **Done** | QE validated the change end-to-end **on `main`** (or on `release/*` for a release-time fix) against the developer's acceptance rubric. |
 
 ---
 
@@ -25,11 +25,16 @@ Triage is **split**, not shared. Neither role does the other's half.
 | Field | Owner | Notes |
 |-------|-------|-------|
 | **Priority** (P0–P2) + rank | **PM** | There is no P3. Board order top-to-bottom is the rank within a priority. |
-| **Branch** | **DevOps** | Gitflow name, cut from `develop`. |
+| **Branch name** | **DevOps** | Gitflow name, `<type>/<slug>`. The **developer creates** the branch on intake. |
 | **Assignee** | **DevOps** | May be left blank. |
 
-The PM does not set branches or assignees and is not consulted on them. DevOps
-does not set priority or rank.
+The PM does not set branch names or assignees and is not consulted on them.
+DevOps does not set priority or rank.
+
+**None of these fields block `Ready`.** The PM moves a task to `Ready` when the
+team agrees during planning that it is understood and buildable. If DevOps has
+not named a branch yet, the developer picks a Conventional-Commit-shaped name
+and starts anyway.
 
 ---
 
@@ -40,17 +45,20 @@ does not set priority or rank.
 3. Never commit directly to `main` or `develop` — all work goes through a pull
    request, per [ADR 0001](decisions/0001-gitflow-and-conventional-commits.md).
 4. Use a dedicated worktree per task to avoid conflicts.
-5. **Branch off `develop`**, synced with `origin/develop`, before starting work.
-6. Commit, review, push, and merge your own PRs once CI is green and a peer has
-   reviewed. No user approval is needed.
+5. **Create the task branch off `develop`** on intake, synced with
+   `origin/develop`, and **write the acceptance rubric before writing code**.
+6. Open a PR, run a review round of **at most two developer subagents in
+   parallel**, reconcile, and merge your own PR once CI is green and disputes are
+   settled. No user approval is needed. **Every push starts a new review round.**
 7. Transition task status as work progresses:
 
 | From | To | When |
 |------|----|------|
-| Backlog | Ready | Definition of Ready met; **PM** records priority and rank, **DevOps** records branch and assignee |
-| Ready | In progress | Agent checks out the branch |
-| In progress | In review | PR is opened |
-| In review | Done | **QE** validated the change end-to-end on the target branch |
+| Backlog | Ready | Team agrees during planning; **PM** records priority and rank. No branch required. |
+| Ready | In progress | Developer creates the branch and writes the acceptance rubric |
+| In progress | In review | PR is opened, and stays In review after the implementor merges it |
+| In review | Done | **QE** validated the change end-to-end on `main` against the rubric |
+| In review | Ready | **QE** rejected it — evidence is attached to the task and the PM schedules a developer |
 
 ---
 
@@ -72,7 +80,9 @@ does not set priority or rank.
 Examples: `feat/wall-descent`, `fix/match-3-off-by-one`, `refactor/engine-api`
 
 Task branches are cut from `develop` and their PRs target `develop`. Only
-`release/<version>` and `hotfix/<version>` target `main`.
+`release/<version>` and `hotfix/<version>` target `main`. QE validates on `main`,
+never on `develop` or on a task branch, and DevOps deletes a task branch once QE
+passes its task.
 
 ---
 

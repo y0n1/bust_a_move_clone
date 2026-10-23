@@ -57,7 +57,7 @@ guessed.
 | Branch | Lifetime | Cut from | Merges into | Purpose |
 |--------|----------|----------|-------------|---------|
 | `main` | permanent | — | — | Production line. Every commit is a released, deployed version. Deploy trigger. |
-| `develop` | permanent | `main` (once) | — | Integration line. Every completed task lands here. QE validates here. |
+| `develop` | permanent | `main` (once) | — | Integration line. Every completed task lands here; releases are cut from here. QE does **not** validate here. |
 | `feat/<slug>` `fix/<slug>` `docs/<slug>` `ci/<slug>` `refactor/<slug>` `test/<slug>` | short | `develop` | `develop` | One task, one branch, one PR. |
 | `release/<version>` | short | `develop` | `main` **and** `develop` | Version bump, `CHANGELOG.md`, release notes only. No new features. |
 | `hotfix/<version>` | short | `main` | `main` **and** `develop` | Production emergency only. |
@@ -69,6 +69,11 @@ the version bump and the next release regresses.
 
 **PR base branch.** Feature work targets `develop`. Only `release/*` and
 `hotfix/*` target `main`.
+
+**Validation surface.** QE validates end-to-end on `main` — the shippable
+artifact — and on a `release/*` branch only when a defect is discovered during a
+release. QE never validates `develop` or a feature branch. See
+[ADR 0002](0002-validate-on-main.md).
 
 ### Commits — Conventional Commits v1.0.0
 
@@ -123,6 +128,11 @@ wrong — fix the commits, do not hand-edit the version.
 - The back-merge is a manual step that will be forgotten unless it is in the
   release checklist. It is.
 - CI must gate PRs into `develop` as well as `main`.
+- Because QE validates on `main`, a feature merged to `develop` stays **In
+  review** until its release ships. The feedback loop from "code merged" to
+  "validated" is measured in releases, not minutes. This is the price of testing
+  the real artifact, and it is why the acceptance rubric must be written before
+  the code.
 
 **Follow-up work**
 - Create `develop` from `main` and protect it identically to `main`.
