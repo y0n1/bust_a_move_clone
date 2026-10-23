@@ -31,3 +31,44 @@ jobs:
 
       - name: Test
         run: flutter test test/
+
+  # The deploy workflow builds the web bundle; nothing did before this job
+  # existed, so a base-href typo or a `dart:io` import reached `main` before
+  # anyone saw it. The base-href below is byte-identical to the one in
+  # deploy-pages.yml — if they drift, this job stops proving the real build.
+  #
+  # Runs in parallel with analyze-test on purpose: a web compile error is
+  # independent of whether the tests pass, so serialising them would add the
+  # whole build time to every PR for no gain.
+  build-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Toolchain is pinned, not floating on a channel. Bump deliberately:
+      # see docs/ops/deployment.md § "Bumping the toolchain".
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.1'
+          cache: true
+
+      - run: flutter pub get
+
+      # --release, matching production exactly: debug builds skip the
+      # tree-shaking and dart2js-only failures this job exists to catch.
+      - name: Build web (release, production base-href)
+        run: flutter build web --release --base-href /bust_a_move_clone/
+
+      - name: Report bundle size
+        if: success()
+        run: |
+          {
+            echo "### Web bundle"
+            echo
+            echo "| Path | Size |"
+            echo "|------|------|"
+            du -sh build/web | awk '{printf "| `build/web` | %s |\n", $1}'
+            du -sh build/web/main.dart.js 2>/dev/null \
+              | awk '{printf "| `main.dart.js` | %s |\n", $1}' || true
+          } >> "$GITHUB_STEP_SUMMARY"

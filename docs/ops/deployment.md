@@ -60,6 +60,10 @@ flowchart LR
 
 ### CI (pull requests)
 
+Two jobs, run in parallel:
+
+**`analyze-test`**
+
 1. Checkout.
 2. Install Flutter — **pinned** to the version in the **Toolchain baseline** row
    of §1, via `subosito/flutter-action@v2` (`flutter-version`, `cache: true`).
@@ -67,9 +71,22 @@ flowchart LR
 4. `flutter analyze --fatal-infos`.
 5. `flutter test test/`.
 
-**Gap:** CI does not currently build the web release. Add the production build
-as a required PR check so base-href and web-only compile errors are caught
-before merge.
+**`build-web`**
+
+1. Checkout.
+2. Install Flutter — the same pinned version.
+3. `flutter pub get`.
+4. `flutter build web --release --base-href /bust_a_move_clone/`.
+5. Report `build/web` and `main.dart.js` sizes to the job summary.
+
+The build command is byte-identical to the one in the deploy workflow below. If
+those two drift, `build-web` stops proving the production build — a base-href
+typo or a `dart:io` import would pass PR CI and fail on `main` instead. Keep
+them in step.
+
+The jobs are separate rather than sequential on purpose: a web compile error is
+independent of whether the tests pass, so running them in parallel costs the
+build's wall-clock once instead of adding it to every PR.
 
 ### Deploy (push to `main`)
 
@@ -299,6 +316,7 @@ Never leave production in an unverified state.
 | Frame rate | 60 fps minimum | Not measured in production |
 | Input-to-feedback | < 100 ms | Not measured in production |
 | Deploy duration | ≤ 5 min | Build step 14.4 s locally |
+| PR gate wall-clock | ≤ 8 min | 0:41 pre-`build-web`; both jobs run in parallel |
 | Change-failure rate | < 15% | Not tracked |
 
 Measure before tightening. Record regressions as tasks, not anecdotes.
@@ -313,7 +331,7 @@ These are **proposals for user triage**, not Ready tasks.
 |----|-----|----------------|------------------|
 | ~~OPS-1~~ | ~~Flutter version floats on `stable`~~ — **closed**: pinned to 3.47.1 (§5) | Builds could have drifted without a code change | `ci/pin-flutter-version` |
 | OPS-2 | No `workflow_dispatch` for redeploy | Rollback requires a revert PR | `ci/manual-redeploy` |
-| OPS-3 | PR CI does not build the web release | Web compile/base-href errors reach `main` | `ci/build-web-on-pr` |
+| ~~OPS-3~~ | ~~PR CI does not build the web release~~ — **closed**: `build-web` job in `ci.yml` (§3) | Web compile/base-href errors reached `main` | `ci/build-web-on-pr` |
 | OPS-4 | No automated post-deploy smoke test | Verification is manual and easy to skip | `ci/post-deploy-smoke` |
 | OPS-5 | No uptime monitoring | Outages are discovered by players | `ci/uptime-check` |
 | OPS-6 | No Lighthouse/performance gate | Size and load regressions are invisible | `ci/lighthouse-budget` |

@@ -84,7 +84,7 @@ blocks *history-rewriting* accidents (force-push, deletion), not *quality* ones.
 | Require pull request before merging | ✅ on | Every change to `main` gets a PR, a CI run, and a reviewable diff. |
 | Required approvals | **0** | Solo-maintainer repo — GitHub forbids self-approval, so `1` would deadlock every PR. Revisit when a second collaborator exists. |
 | Dismiss stale approvals | ✅ on | Cheap now, correct the moment approvals become non-zero. |
-| Require status checks — `analyze-test` | ✅ on (strict/up-to-date) | Exactly one CI job exists: `analyze-test` in `ci.yml` (verified check-run `name`: `analyze-test`; `gh pr checks` renders it `CI/analyze-test`). It runs `flutter analyze --fatal-infos` + `flutter test test/`. |
+| Require status checks — `analyze-test`, `build-web` | ✅ on (strict/up-to-date) | Two CI jobs exist: `analyze-test` and `build-web` in `ci.yml` (verified check-run `name`s; `gh pr checks` renders them `CI/analyze-test` and `CI/build-web`). The first runs `flutter analyze --fatal-infos` + `flutter test test/`; the second runs the production web build. |
 | Require branches to be up to date | ✅ on | Deploy builds the *merge result*; green CI on a stale base proves nothing. Cost is low with ~1 open PR. |
 | Require conversation resolution | ✅ on | Prevents merging with an unanswered QE/review objection. |
 | Block force pushes | ✅ keep on | Already enforced by ruleset `Default`; restating it keeps one authoritative config. |
@@ -104,7 +104,7 @@ blocks *history-rewriting* accidents (force-push, deletion), not *quality* ones.
 gh api --method PUT repos/y0n1/bust_a_move_clone/branches/main/protection \
   --input - <<'JSON'
 {
-  "required_status_checks": { "strict": true, "contexts": ["analyze-test"] },
+  "required_status_checks": { "strict": true, "contexts": ["analyze-test", "build-web"] },
   "enforce_admins": true,
   "required_pull_request_reviews": { "dismiss_stale_reviews": true,
                                      "required_approving_review_count": 0 },
