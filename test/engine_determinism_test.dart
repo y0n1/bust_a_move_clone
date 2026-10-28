@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:test/test.dart';
 import 'package:bust_a_move_clone/game/engine.dart';
-import 'package:bust_a_move_clone/game/model.dart';
 
 void main() {
   group('Engine Determinism', () {
