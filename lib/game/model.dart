@@ -4,6 +4,7 @@
 library;
 
 import 'dart:math' as math;
+import 'package:collection/collection.dart';
 
 /// The 6 colors a bubble can be.
 ///
@@ -30,6 +31,19 @@ class Bubble {
   /// A key identifying the bubble's slot on the board. Two bubbles can never
   /// share a key, and a key is unique to a (row, col) pair.
   String get key => '$row:$col';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Bubble &&
+        other.color == color &&
+        other.row == row &&
+        other.col == col &&
+        other.key == key;
+  }
+
+  @override
+  int get hashCode => color.hashCode ^ row.hashCode ^ col.hashCode ^ key.hashCode;
 
   @override
   String toString() => 'Bubble($color @ row $row, col $col)';
@@ -64,6 +78,23 @@ class Projectile {
     x += vx * dt;
     y += vy * dt;
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Projectile &&
+        other.color == color &&
+        other.x == x &&
+        other.y == y &&
+        other.vx == vx &&
+        other.vy == vy;
+  }
+
+  @override
+  int get hashCode => color.hashCode ^ x.hashCode ^ y.hashCode ^ vx.hashCode ^ vy.hashCode;
+
+  @override
+  String toString() => 'Projectile(color=$color, x=$x, y=$y, vx=$vx, vy=$vy)';
 }
 
 /// Snapshot of the game board + HUD state at a point in time.
@@ -150,6 +181,42 @@ class GameState {
       shotsTaken: shotsTaken ?? this.shotsTaken,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is GameState &&
+        const DeepCollectionEquality().equals(other.bubbles, bubbles) &&
+        other.projectile == projectile &&
+        const DeepCollectionEquality().equals(other.nextColors, nextColors) &&
+        other.score == score &&
+        other.lives == lives &&
+        other.level == level &&
+        other.bubbleRow == bubbleRow &&
+        other.status == status &&
+        other.poppedThisShot == poppedThisShot &&
+        other.combo == combo &&
+        other.initialBubbleCount == initialBubbleCount &&
+        other.shotsTaken == shotsTaken;
+  }
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(bubbles.entries.map((e) => '${e.key}:${e.value.hashCode}').toList()) ^
+      projectile.hashCode ^
+      const DeepCollectionEquality().hash(nextColors) ^
+      score.hashCode ^
+      lives.hashCode ^
+      level.hashCode ^
+      bubbleRow.hashCode ^
+      status.hashCode ^
+      poppedThisShot.hashCode ^
+      combo.hashCode ^
+      initialBubbleCount.hashCode ^
+      shotsTaken.hashCode;
+
+  @override
+  String toString() => 'GameState(score=$score, lives=$lives, level=$level, status=$status, shotsTaken=$shotsTaken, bubblesCount=${bubbles.length}, projectile=$projectile, nextColors=$nextColors, bubbleRow=$bubbleRow, poppedThisShot=$poppedThisShot, combo=$combo, initialBubbleCount=$initialBubbleCount)';
 }
 
 enum GameStatus { playing, won, lost }

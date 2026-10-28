@@ -35,7 +35,7 @@ flutter build web --release
 
 ## Project layout
 
-```
+```text
 lib/
   main.dart           # App entry point + start screen
   game/

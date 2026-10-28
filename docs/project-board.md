@@ -2,7 +2,8 @@
 
 > **Location:** `y0n1/bust_a_move_clone` GitHub repository  
 > **URL:** `https://github.com/users/y0n1/projects/3` (GitHub Project, Kanban)  
-> **Workflow source:** `AGENTS.md` section 4 + `.copilot/instructions/dev-workflow.instructions.md`
+> **Workflow:** [Contributing guide](../CONTRIBUTING.md) and
+> [agent-team charter](agent-team.md).
 
 ---
 
@@ -139,4 +140,3 @@ gh project list -R y0n1/bust_a_move_clone
 # Find the board URL directly
 gh api repos/y0n1/bust_a_move_clone/projects | jq '.[] | {name, url, body_text}'
 ```
-

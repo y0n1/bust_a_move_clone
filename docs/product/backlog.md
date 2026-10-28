@@ -116,7 +116,7 @@ If Wave 1 and 2 slip, this wave is what gets cut.
 | Level select | Five levels; there is nothing to select. | ≥ 15 levels exist. |
 | Level timer | A second clock makes a loss unattributable; the cited source describes no timer (CA §9 C2). | Playtest shows descent alone is too slow. |
 | Idle auto-fire | Arcade coin-drop artefact; hostile in a browser tab the player alt-tabs away from. | Only if a "classic arcade" mode is scoped. |
-| Vs / multiplayer | Anti-pillar 3; `lib/net/` and `server/` do not exist. | Separately scoped by the Multiplayer Developer. |
+| Vs / multiplayer | Anti-pillar 3; `lib/net/` and `server/` do not exist. | Separately scoped in an approved product brief with implementation ownership assigned. |
 | Daily challenge, streaks, energy, ads, IAP | Anti-pillars 1–2. | Product Owner reverses anti-pillar 1 in writing. |
 | Accounts, cloud leaderboard, telemetry backend | Anti-pillar 2; static GitHub Pages, no server. | Product Owner approves a backend. |
 | Colour-blind shape cues | Not a PM item — UX owns it ([`design-system.md`](../design/design-system.md) §6.2) and QE gates it. | Already specified; track as a release dependency, not a backlog item. |

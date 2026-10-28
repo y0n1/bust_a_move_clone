@@ -52,7 +52,7 @@ with the Flutter Developer.
 9. Open a PR **targeting `develop`** with the handoff section, and move the task
    to **In review**.
 10. **Review round.** Spawn **at most two developer subagents, in parallel** —
-    `Engine Developer`, `Flutter Developer`, or `Multiplayer Developer` as the
+    `Engine Developer` or `Flutter Developer` as the
     change warrants. Each reviews independently against the review criteria
     below. Never review your own change alone; never spawn more than two.
 11. **Reconcile.** Address every review comment or push back with a reason.

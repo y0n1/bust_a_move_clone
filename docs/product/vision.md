@@ -131,7 +131,8 @@ skill is meaningful and every bug is reproducible.
 **Grounded in:** `lib/game/model.dart` (`GameState` value object, `copyWith`);
 `lib/game/engine.dart` (constructor takes `rng`; `Engine.forLevel`); seeded
 tests in `test/engine_test.dart` and `test/descent_test.dart`; guardrails in
-`AGENTS.md` §4.
+the [contribution rules](../../CONTRIBUTING.md) and
+[architecture guide](../architecture.md).
 
 ### Pillar 5 — Bite-sized mastery
 
@@ -163,9 +164,9 @@ on win and replays the current level on life loss.
 2. **No live-service scope.** No accounts, cloud saves, server-side
    leaderboards, daily challenges, or telemetry backend in v1.x. If a high-score
    table ships, it is local-only and explicitly approved (see Open Questions).
-3. **No multiplayer until it is separately scoped.** The spec is single-player.
-   `lib/net/` and `server/` do not exist; the Multiplayer Developer role owns
-   future work, not this vision.
+3. **No multiplayer in the current scope.** The spec is single-player.
+   `lib/net/` and `server/` do not exist; reconsider multiplayer only with a
+   separately approved product brief and an assigned implementation owner.
 4. **No engine or architecture rewrite.** No rigid-body physics, no replacing
    the hex grid, no Flutter imports in `lib/game/`, no migration to
    Riverpod/Provider. The deterministic pure-Dart engine is the asset.

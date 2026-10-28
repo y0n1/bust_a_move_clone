@@ -69,7 +69,7 @@ docs/
 - **Artifacts:** `docs/ops/deployment.md`, `docs/ops/deployment-log.md`,
   `docs/quality/test-strategy.md`, `docs/quality/release-checklist.md`,
   `docs/quality/reports/2026-10-23-v1.0.0-baseline.md`, `docs/status/2026-10-23-kickoff.md`.
-- **Team:** 7 roles / 7 agents in `.github/agents/` (PM, UX, Engine, Flutter, Multiplayer, QE, DevOps).
+- **Team:** 6 roles / 6 agents in `.github/agents/` (PM, UX, Engine, Flutter, QE, DevOps).
   The PM covers product **and** delivery; there is no separate project manager.
 - **Branching:** Gitflow + Conventional Commits — see `docs/decisions/0001-gitflow-and-conventional-commits.md`.
   Task branches cut from `develop`, PRs target `develop`; only `release/*` and
