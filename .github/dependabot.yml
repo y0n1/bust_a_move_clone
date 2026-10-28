@@ -1,0 +1,65 @@
+# Dependabot — scheduled dependency updates for the two ecosystems this project
+# actually has: Dart packages (`pub`) and the GitHub Actions the pipelines run.
+#
+# Read this with docs/ops/dependencies.md. Two properties of this file are easy
+# to get wrong and are load-bearing:
+#
+#   1. It only takes effect from the DEFAULT branch. Dependabot version updates
+#      are scheduled from `main`, never from `develop`. A change to this file
+#      does nothing until the release that carries it reaches `main`.
+#   2. A malformed file fails SILENTLY — no PRs, no red workflow, no error to
+#      look at. Validate before merging:
+#        python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" \
+#          .github/dependabot.yml
+#
+# Grouping is deliberate. An ungrouped config on a project this size opens one PR
+# per package per week; the queue becomes noise nobody reads, which fails the same
+# way as having no automation at all. Majors are excluded from the groups on
+# purpose: a major bump is a decision, and it should arrive on its own where it
+# gets read rather than buried inside a five-package routine PR.
+
+version: 2
+
+updates:
+  # Dart / Flutter packages. `pubspec.lock` is committed, so Dependabot bumps the
+  # lockfile as well and the PR reproduces exactly on CI.
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      dart-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # The actions our workflows run. This is the only code in the pipeline we do
+  # not write ourselves, and it executes with a repository token — so it is the
+  # most valuable thing here to keep current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        # Same policy as `pub` above: majors stay ungrouped so each one arrives as
+        # its own PR and gets read. Without this, a major action bump — the one
+        # class of bump that can silently change a job's permissions — would be
+        # folded into the routine weekly PR.
+        update-types:
+          - "minor"
+          - "patch"

@@ -86,7 +86,7 @@ deletion), not *quality* ones.
 | Require pull request before merging | ✅ on | Every change to `main` gets a PR, a CI run, and a reviewable diff. |
 | Required approvals | **0** | Solo-maintainer repo — GitHub forbids self-approval, so `1` would deadlock every PR. Revisit when a second collaborator exists. |
 | Dismiss stale approvals | ✅ on | Cheap now, correct the moment approvals become non-zero. |
-| Require status checks — `analyze-test`, `build-web` | ✅ on (strict/up-to-date) | Two CI jobs exist: `analyze-test` and `build-web` in `ci.yml`. `gh pr checks` renders them as the bare check-run names `analyze-test` and `build-web` — those exact strings are what `contexts` must contain. The first runs `flutter analyze --fatal-infos` + `flutter test test/`; the second runs the production web build. |
+| Require status checks — `analyze-test`, `build-web`, `dependency-review` | ✅ on (strict/up-to-date) | Three jobs exist: `analyze-test` and `build-web` in `ci.yml`, and `dependency-review` in `.github/workflows/dependency-review.yml` (added by OPS-7). `gh pr checks` renders them as the bare check-run names — those exact strings are what `contexts` must contain. The first runs `flutter analyze --fatal-infos` + `flutter test test/`; the second runs the production web build; the third fails a PR that introduces a dependency with a moderate-or-worse advisory in a runtime scope. (Its licence checks run but cannot fail yet — no allow/deny list is configured, see `dependencies.md` §3.) |
 | Require branches to be up to date | ✅ on | Deploy builds the *merge result*; green CI on a stale base proves nothing. Cost is low with ~1 open PR. |
 | Require conversation resolution | ✅ on | Prevents merging with an unanswered QE/review objection. |
 | Block force pushes | ✅ keep on | Already enforced by ruleset `Default`; restating it keeps one authoritative config. |
@@ -106,7 +106,7 @@ deletion), not *quality* ones.
 gh api --method PUT repos/y0n1/bust_a_move_clone/branches/main/protection \
   --input - <<'JSON'
 {
-  "required_status_checks": { "strict": true, "contexts": ["analyze-test", "build-web"] },
+  "required_status_checks": { "strict": true, "contexts": ["analyze-test", "build-web", "dependency-review"] },
   "enforce_admins": true,
   "required_pull_request_reviews": { "dismiss_stale_reviews": true,
                                      "required_approving_review_count": 0 },
@@ -165,8 +165,8 @@ involved, log it in `deployment-log.md` with a `ROLLBACK:` prefix.
 |-------|---------|----------|
 | Protection exists | `gh api repos/y0n1/bust_a_move_clone/branches/main/protection` | `200` with the §4.1 payload (no longer `404`) |
 | Ruleset intact | `gh api repos/y0n1/bust_a_move_clone/rules/branches/main` | `deletion` + `non_fast_forward` + new protection rules |
-| Check name matches CI | `gh pr checks <n>` | Both `analyze-test` and `build-web` shown as required/blocking |
-| PR gate blocks red CI | Push a failing commit to a scratch branch, open PR | Merge button disabled until `analyze-test` **and** `build-web` pass |
+| Check name matches CI | `gh pr checks <n>` | `analyze-test`, `build-web` and `dependency-review` all shown as required/blocking |
+| PR gate blocks red CI | Push a failing commit to a scratch branch, open PR | Merge button disabled until all three required checks pass |
 | Direct push rejected | From a throwaway clone: commit an empty change on `main` and `git push origin main` | `remote: error: GH006: Protected branch update failed` — nothing lands, since the ref update is refused. **Requires approval to run; `--dry-run` is not a valid test** (no ref update is attempted, so the server may report success). |
 | Admin bypass closed | `gh api repos/y0n1/bust_a_move_clone/rulesets/24729086 --jq .current_user_can_bypass` | `"never"` only if §4.2 is applied; otherwise `"always"` |
 
