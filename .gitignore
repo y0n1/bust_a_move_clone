@@ -56,3 +56,6 @@ tools/__pycache__/
 # Agent workspace artifacts
 outputs/
 current_session_context/
+
+# Local MCP configuration may contain credentials
+.mcp.json
