@@ -2,7 +2,8 @@
 
 > **Owner:** DevOps Engineer  
 > **Task:** OPS-7 / [#85](https://github.com/y0n1/bust_a_move_clone/issues/85)  
-> **Last verified:** 2026-10-23 (validated against `origin/develop` at `0c1299a`)  
+> **Last verified:** 2026-10-28 (graph, alerts and security updates confirmed live;
+> the gate evaluated a real diff on [#104](https://github.com/y0n1/bust_a_move_clone/pull/104) — see §7.1)  
 > **Companions:** [`deployment.md`](deployment.md), [`branch-protection.md`](branch-protection.md),
 > [`../agent-team.md`](../agent-team.md), [`.github/dependabot.yml`](../../.github/dependabot.yml),
 > [`.github/workflows/dependency-review.yml`](../../.github/workflows/dependency-review.yml)
@@ -17,7 +18,8 @@
 | Dependabot version updates | `github-actions` | Weekly, Monday | `.github/dependabot.yml` | **`main` only** |
 | Dependency review gate | whatever the dependency graph holds | Every PR to `main` and `develop` | `.github/workflows/dependency-review.yml` | the PR's **base branch** |
 | Dependabot security updates | both | As soon as an advisory matches | repository settings — *not* a file | `main` |
-| Dependency graph | `pub` | On every push — **currently disabled on this repository**, see §7.1 | GitHub, from the committed `pubspec.lock` | `main` |
+| Dependabot alerts | both | Continuous — feeds the gate's advisory data | repository settings — *not* a file | `main` |
+| Dependency graph | `pub` **and** `github-actions` | On every push — **enabled**, 4 manifests indexed | GitHub, from the committed `pubspec.lock` and the workflow files | `main` |
 
 Two of those rows are the reason this document exists at all:
 
@@ -130,14 +132,15 @@ but does not block. Rationale is in the workflow comments.
 |-------|--------|
 | `dependabot.yml` parses and matches the documented option names | ✅ validated locally before merge (a malformed file fails **silently**: no PRs, no red run) |
 | `dependency-review.yml` parses and runs on a PR | ✅ observed on #104 — the job started and failed with an actionable message, not a YAML error |
-| The gate can actually evaluate **this** repository | ❌ **BLOCKED** — the repository has no dependency graph. See §7.1 |
+| The gate can actually evaluate **this** repository | ✅ **proven 2026-10-28** — the re-run evaluated the real diff on #104 rather than skipping. See §7.1 |
 | Dependabot actually opens a PR on schedule | ⏳ **not yet proven** — the schedule is read from `main`, so the first real proof is the first Monday after this reaches `main` |
 | The check blocks the merge button | ❌ **not yet** — a required status check is a repository setting. `dependency-review` is added to the proposal in [`branch-protection.md`](branch-protection.md) §3, which is not applied |
 
-### 7.1 Blocker: this repository has no dependency graph
+### 7.1 Resolved: the graph was not the blocker — Dependabot was
 
-The action does not scan anything itself. It asks GitHub's dependency review API
-to diff two revisions, and that API is unavailable here:
+First recorded as a blocker, then diagnosed properly and fixed. The action does not
+scan anything itself. It asks GitHub's dependency review API to diff two revisions,
+and on 2026-10-23 that API refused this repository:
 
 ```console
 $ gh run view --log-failed
@@ -154,20 +157,61 @@ $ gh api repos/y0n1/bust_a_move_clone/dependabot/alerts
 {"message":"Dependabot alerts are disabled for this repository.","status":"403"}
 ```
 
-All of **Code security and analysis** is off for this repository: no dependency
-graph, no Dependabot alerts, no Dependabot security updates, no secret scanning
-(`security_and_analysis` in `GET /repos/{owner}/{repo}` reports every entry as
-`disabled`).
+That first reading — "all of Code security and analysis is off, including the
+dependency graph, and this needs a human in the Settings UI" — was close, but not
+exact, and the difference decided who had to act. Re-probing with admin rights on
+2026-10-28 showed the graph was never the missing piece:
 
-**This cannot be fixed from a file.** Enabling the dependency graph is a
-repository setting. It is also the *precondition* for three of this task's four
-acceptance criteria, so OPS-7 is blocked on a settings change rather than on
-code — recorded here instead of being papered over with a workflow that skips
-itself when the graph is missing. A gate that silently no-ops is worse than no
-gate, because it reports green.
+| Probe | Before (2026-10-23) | After (2026-10-28) |
+|-------|---------------------|--------------------|
+| `security_and_analysis.dependabot_security_updates` | `disabled` | `enabled` |
+| `GET …/dependabot/alerts` | `403 Dependabot alerts are disabled for this repository.` | `200` with `[]` — enabled, none open |
+| GraphQL `dependencyGraphManifests { totalCount }` | — | `4`: `pubspec.lock`, `pubspec.yaml`, `ci.yml`, `deploy-pages.yml` |
+| `GET …/dependency-graph/compare/{sha}...{sha}` | refused | `200` with a real diff |
+| `GET …/dependency-graph/sbom` | `404` | `404` — unchanged, and still fine: this graph is manifest-derived, no SBOM was ever uploaded |
 
-Once the graph is enabled, re-running the job on any PR is enough; nothing in
-this repository needs to change.
+**The fix was one repository-setting call, not a file change:**
+
+```console
+gh api -X PATCH repos/y0n1/bust_a_move_clone \
+  -f 'security_and_analysis[dependabot_security_updates][status]=enabled'
+```
+
+…followed by `gh run rerun 40014225842 --failed`, which passed. Three findings are
+worth keeping, because each one is a dead end someone would otherwise walk back into:
+
+- **Do not chase "enable advanced security" on this repository.** `PUT …/advanced_security`
+  returns `404`, and `PATCH …[advanced_security][status]=enabled` returns
+  `422 Advanced security is always available for public repos.` On a **public** repo,
+  advanced security — and with it the dependency graph — is on by definition; there is
+  nothing to switch on. (That endpoint family also demands the `admin:repo_hook` OAuth
+  scope, which the CI token does not carry, so it stays unreachable regardless.)
+- **The real precondition is Dependabot alerts.** The review API is gated on them, and
+  when they are off it refuses the request while the action reports the generic
+  *"ensure that Dependency graph is enabled"* — pointing at the wrong setting. Alerts
+  and security updates are separate switches in the UI, but security updates require
+  alerts, so the single `PATCH` above brought both up. Secret scanning stays off on
+  purpose: nothing here handles provider secrets, and push protection would slow every
+  contributor for no benefit.
+- **Probe `compare` with SHAs, not branch names.** `…/compare/develop...ci/dependency-review`
+  returns `404` because the slash in the head ref breaks the URL routing; pass two full
+  commit SHAs instead. A hand-run `404` from that endpoint is usually this trap, not a
+  disabled graph.
+
+Proof the green is real and not a skipped gate — the re-run's own output, which names
+the two dependencies this PR adds (a job that no-ops cannot produce this):
+
+```
+Vulnerabilities: did not detect any vulnerable packages with severity level "moderate" or higher
+Dependency Changes: .github/workflows/dependency-review.yml
+                    + actions/checkout@4.*.*
+                    + actions/dependency-review-action@5.*.*
+Scorecard: actions/checkout 5.9, actions/dependency-review-action 7.7
+```
+
+Nothing in this repository needs to change for the gate to work. What still does not
+hold is §7's last row: the check is not yet *required*, so it reports rather than
+blocks — see [`branch-protection.md`](branch-protection.md) §3.
 
 ## 8. Files
 
@@ -186,6 +230,15 @@ this repository needs to change.
   mass changes, and SHA pinning is a repo-wide sweep.
 - **No licence allow-list.** See §3.
 - **The gate is not a required check.** See §7.
-- **The dependency graph is disabled, so the gate cannot run at all.** See §7.1.
-  Until that changes, the red `dependency-review` check on every PR is reporting
-the repository's configuration, not the PR's dependencies.
+- **The gate reports, it does not block.** `dependency-review` is green and working,
+  but it is not yet a required status check — see §7 and §9 above.
+- **Licences on GitHub Actions dependencies come back undetectable.** The gate reports
+  `actions/checkout` and `actions/dependency-review-action` as "could not detect a
+  license", because the Actions ecosystem carries no licence metadata in the graph. It
+  is noise, not a finding — and with no allow/deny list configured (§3) it cannot fail
+  the build either way.
+- **The dependency graph is enabled as of 2026-10-28** (it was the blocker this section
+  once led with). Re-verify with `gh api graphql -f query='{repository(owner:"y0n1",
+  name:"bust_a_move_clone"){dependencyGraphManifests(first:5){totalCount}}}'` if the
+  gate ever goes red with "not supported on this repository" — that wording now means
+  Dependabot alerts were switched off, not that the graph is missing. See §7.1.
