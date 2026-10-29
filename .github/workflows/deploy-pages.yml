@@ -44,7 +44,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Push: deploy exactly the commit that landed. Manual: deploy the ref
           # the operator asked for — that is how rollback works.
@@ -129,11 +129,11 @@ jobs:
       # The checker is infrastructure, not the thing being verified: run the
       # current copy from the workflow ref, so a rollback to a commit that
       # predates this script still gets verified.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # ...but the expected version must come from the ref that was deployed,
       # which on a manual run is not the ref the workflow runs from.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
           path: deployed-ref
