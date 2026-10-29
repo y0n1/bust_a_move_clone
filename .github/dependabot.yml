@@ -11,6 +11,10 @@
 #      look at. Validate before merging:
 #        python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" \
 #          .github/dependabot.yml
+#   3. Without `target-branch`, PRs open against the DEFAULT branch (`main`),
+#      which would let a dependency change deploy to production outside
+#      Gitflow. Both entries therefore pin `target-branch: develop` (ADR 0001,
+#      #123); this takes effect for new PRs only once it reaches `main`.
 #
 # Grouping is deliberate. An ungrouped config on a project this size opens one PR
 # per package per week; the queue becomes noise nobody reads, which fails the same
@@ -24,6 +28,7 @@ updates:
   # Dart / Flutter packages. `pubspec.lock` is committed, so Dependabot bumps the
   # lockfile as well and the PR reproduces exactly on CI.
   - package-ecosystem: "pub"
+    target-branch: "develop"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -44,6 +49,7 @@ updates:
   # not write ourselves, and it executes with a repository token — so it is the
   # most valuable thing here to keep current.
   - package-ecosystem: "github-actions"
+    target-branch: "develop"
     directory: "/"
     schedule:
       interval: "weekly"
