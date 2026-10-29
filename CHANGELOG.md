@@ -9,10 +9,12 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.1.0] - 2026-10-28
 
-> **Pending.** The tag is cut only after QE validates this release on
-> `main` and issues a PASS report
-> ([ADR 0002](docs/decisions/0002-validate-on-main.md)). Full detail and the
-> version derivation are in the
+> **Cut, not yet validated.** `pubspec.yaml` carries `1.1.0+1` from this
+> release commit, which is the version the deployed `version.json` must
+> report. **The tag and the GitHub Release are cut only after QE validates
+> this release on `main` and issues a PASS report**
+> ([ADR 0002](docs/decisions/0002-validate-on-main.md)); neither exists yet.
+> Full detail and the version derivation are in the
 > [release notes](docs/releases/release-notes/v1.1.0.md).
 
 ### Added

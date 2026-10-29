@@ -1,7 +1,7 @@
 name: bust_a_move_clone
 description: Flutter web clone of the classic 1994 arcade bubble-shooter Bust-A-Move
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+1
 
 environment:
   sdk: '>=3.13.1 <4.0.0'
