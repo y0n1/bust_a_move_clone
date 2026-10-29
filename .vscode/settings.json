@@ -1,56 +1,130 @@
 {
     "vllm-copilot.models": [
         {
-            "id": "Nemotron 3.5 Super",
-            "vllmModelId": "Nemotron-3.5-Super-VL-120B-A12B-Q4_K_M",
-            "server": "llama-router",
-            "contextWindow": 131072,
+            "vllmModelId": "nvidia/Qwen3.8-Flash-Next-FP4-Local",
+            "displayName": "Qwen3.8-Flash-Next",
+            "family": "qwen4_exp",
+            "maxOutputTokens": [
+                32768,
+                16384,
+                8192
+            ],
             "capabilities": {
                 "toolCalling": true,
                 "imageInput": true
             },
-            "maxOutputTokens": [
-                32768,
-                20480,
-                8192,
-                4096
-            ],
-            "estimateCharsPerToken": 3.5,
-            "streamInactivityTimeout": 0,
-            "initialResponseTimeoutMs": 600000,
-            "autoContinueRetries": 1,
-            "modelModes": {}
+            "modelModes": {
+                "Think (Deep)": {
+                    "chat_template_kwargs": {
+                        "enable_thinking": true,
+                        "preserve_thinking": true
+                    },
+                    "reasoning_effort": "xhigh",
+                    "temperature": 1,
+                    "top_p": 0.95,
+                    "top_k": 20,
+                    "min_p": 0,
+                    "presence_penalty": 0,
+                    "repetition_penalty": 1
+                },
+                "Think (Balanced)": {
+                    "chat_template_kwargs": {
+                        "enable_thinking": true,
+                        "preserve_thinking": true
+                    },
+                    "reasoning_effort": "medium",
+                    "temperature": 1,
+                    "top_p": 0.95,
+                    "top_k": 20,
+                    "min_p": 0,
+                    "presence_penalty": 0,
+                    "repetition_penalty": 1
+                },
+                "No Think": {
+                    "chat_template_kwargs": {
+                        "enable_thinking": false
+                    },
+                    "temperature": 0.7,
+                    "top_p": 0.8,
+                    "top_k": 20,
+                    "min_p": 0,
+                    "presence_penalty": 1.5,
+                    "repetition_penalty": 1
+                }
+            },
+            "defaultMode": "Think (Deep)",
+            "id": "nvidia/Qwen3.8-Flash-Next-FP4-Local on y0n1s-spark-local-8000",
+            "server": "y0n1s-spark-local-8000"
         },
         {
-            "id": "Nemotron 3 Nano Omni",
-            "vllmModelId": "nemotron-3-nano-omni-30b-a3b-reasoning",
-            "server": "llama-router",
-            "contextWindow": 131072,
+            "vllmModelId": "nvidia/Qwen3.8-Flash-Next-FP4-Local",
+            "displayName": "Qwen3.8-Flash-Next (over 10G)",
+            "family": "qwen4_exp",
+            "maxOutputTokens": [
+                32768,
+                16384,
+                8192
+            ],
             "capabilities": {
                 "toolCalling": true,
                 "imageInput": true
             },
-            "maxOutputTokens": [
-                32768,
-                20480,
-                8192,
-                4096
-            ],
+            "modelModes": {
+                "Think (Deep)": {
+                    "chat_template_kwargs": {
+                        "enable_thinking": true,
+                        "preserve_thinking": true
+                    },
+                    "reasoning_effort": "xhigh",
+                    "temperature": 1,
+                    "top_p": 0.95,
+                    "top_k": 20,
+                    "min_p": 0,
+                    "presence_penalty": 0,
+                    "repetition_penalty": 1
+                },
+                "Think (Balanced)": {
+                    "chat_template_kwargs": {
+                        "enable_thinking": true,
+                        "preserve_thinking": true
+                    },
+                    "reasoning_effort": "medium",
+                    "temperature": 1,
+                    "top_p": 0.95,
+                    "top_k": 20,
+                    "min_p": 0,
+                    "presence_penalty": 0,
+                    "repetition_penalty": 1
+                },
+                "No Think": {
+                    "chat_template_kwargs": {
+                        "enable_thinking": false
+                    },
+                    "temperature": 0.7,
+                    "top_p": 0.8,
+                    "top_k": 20,
+                    "min_p": 0,
+                    "presence_penalty": 1.5,
+                    "repetition_penalty": 1
+                }
+            },
+            "defaultMode": "Think (Deep)",
+            "id": "nvidia/Qwen3.8-Flash-Next-FP4-Local on y0n1s-spark-10g-8000",
+            "server": "y0n1s-spark-10g-8000",
             "estimateCharsPerToken": 3.5,
             "streamInactivityTimeout": 0,
             "initialResponseTimeoutMs": 600000,
-            "autoContinueRetries": 1,
-            "modelModes": {}
+            "autoContinueRetries": 1
         },
         {
             "vllmModelId": "rits/deepseek-ai/DeepSeek-V4.1-Flash-1017",
             "displayName": "DeepSeek V4.1 Flash",
             "family": "deepseek_v41",
             "maxOutputTokens": [
-                32768,
+                262144,
                 131072,
                 65536,
-                16384
+                32768
             ],
             "capabilities": {
                 "toolCalling": true,
@@ -74,9 +148,9 @@
                 }
             },
             "defaultMode": "Think (High)",
-            "id": "rits/deepseek-ai/DeepSeek-V4.1-Flash-1017 on enmaas",
-            "server": "enmaas",
-            "contextWindow": 262144
+            "id": "rits/deepseek-ai/DeepSeek-V4.1-Flash-1017 on api-enmaas-devshift-net",
+            "server": "api-enmaas-devshift-net",
+            "contextWindow": 1000000
         }
     ],
 }

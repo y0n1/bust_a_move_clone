@@ -10,6 +10,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Toolchain is pinned, not floating on a channel, and defined once here so the
+# jobs below cannot drift onto different versions. Bump deliberately:
+# see docs/ops/deployment.md § "Bumping the toolchain".
+env:
+  FLUTTER_VERSION: '3.47.1'
+
 jobs:
   analyze-test:
     runs-on: ubuntu-latest
@@ -19,7 +25,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - run: flutter pub get
@@ -29,3 +35,53 @@ jobs:
 
       - name: Test
         run: flutter test test/
+
+  # Before this job existed, nothing on the PR gate built the web bundle: the
+  # deploy workflow does build it, but only after a push to `main`. So a
+  # base-href typo or a web-only compile error reached production before anyone
+  # saw it. The base-href below is byte-identical to the one in
+  # deploy-pages.yml — if they drift, this job stops proving the real build.
+  #
+  # Runs in parallel with analyze-test on purpose: a web compile error is
+  # independent of whether the tests pass, so serialising them would add the
+  # whole build time to every PR for no gain.
+  build-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - run: flutter pub get
+
+      # --release, matching production exactly: debug builds skip the
+      # tree-shaking and dart2js-only failures this job exists to catch.
+      - name: Build web (release, production base-href)
+        run: flutter build web --release --base-href /bust_a_move_clone/
+
+      # On-disk size answers "how big is the artifact"; gzip answers the payload
+      # budget in the product vision (EQ-5 is a gzip figure). Report both, or
+      # someone reads the raw number against the gzip cap and concludes the
+      # budget is blown. Level 6 is gzip's default and what the recorded 0.54 MB
+      # baseline was measured at — `-9` reports a tighter 0.53 MB and makes the
+      # job disagree with the doc every run. Best-effort: a missing file drops
+      # its row, never fails.
+      - name: Report bundle size
+        run: |
+          {
+            echo "### Web bundle"
+            echo
+            echo "| Artifact | Size |"
+            echo "|----------|------|"
+            du -sh build/web | awk '{printf "| `build/web` (on disk) | %s |\n", $1}'
+            if [ -f build/web/main.dart.js ]; then
+              du -sh build/web/main.dart.js \
+                | awk '{printf "| `main.dart.js` (on disk) | %s |\n", $1}'
+              gzip -6 -c build/web/main.dart.js | wc -c \
+                | awk '{printf "| `main.dart.js` (gzip) | %.2f MB |\n", $1/1048576}'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

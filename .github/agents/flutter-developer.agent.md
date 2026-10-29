@@ -52,7 +52,7 @@ ViewModels that bind them to the engine.
 10. Open a PR **targeting `develop`** with the handoff section, and move the task
     to **In review**.
 11. **Review round.** Spawn **at most two developer subagents, in parallel** —
-    `Flutter Developer`, `Engine Developer`, or `Multiplayer Developer` as the
+    `Flutter Developer` or `Engine Developer` as the
     change warrants. Each reviews independently against the review criteria
     below. Never review your own change alone; never spawn more than two.
 12. **Reconcile.** Address every review comment or push back with a reason.
