@@ -41,7 +41,7 @@ Two problems, one change.
 | Layout box height is `rows + 1.2`, so only **0.2 bubble-diameters of clearance exist below the cannon** | **Fact** | `computeLayout`, `game_viewmodel.dart` L201–220 |
 | The design system currently *specifies* the queue in the top-bar stats cluster and fixes z-order and preview counts | **Fact** | [`design-system.md`](../../docs/design/design-system.md) §5.1, §5.3, §5.4 |
 | Previews are colour-only circles today; §6.2 requires six distinct silhouettes (`× ▲ ▬ ✦ ◆ ▪`) on the queue | **Fact** | `level_display.dart` vs. design-system §6.2 |
-| The arcade original shows the next bubble near the cannon | **Assumption** — asserted in #42, **not** verified in [`competitive-analysis.md`](competitive-analysis.md), which records queue *discipline* (§4) but not queue *placement* | PM to close before any production task |
+| The arcade original shows the next bubble near the cannon | **Unverifiable (2026-10-29)** — asserted in #42; [CA §4 "Queue placement"](../competitive-analysis.md) records that the cited gameplay text documents *no* next-bubble display and that StrategyWiki and Arcade-History were inaccessible (403). The fidelity claim cannot be relied on | CAs track it as open question **C6**; the spike must earn this on playtest evidence, not on fidelity |
 | Proximity removes the ambiguity #42 described | **Inference** | Gestalt proximity; untested by playtest |
 | Freeing the queue relieves 360 dp overflow | **Inference** | Token arithmetic above; the spike must measure it |
 
@@ -144,18 +144,21 @@ All four are playtest-measurable; none needs telemetry (Anti-pillar 2 holds).
 
 ## Competitive reference
 
-Our own matrix ([`competitive-analysis.md`](competitive-analysis.md) §4) tracks queue
+Our own matrix ([`competitive-analysis.md`](competitive-analysis.md) §4) tracked queue
 *discipline* (the reference draws only from colours still on screen; `_refill` does
-not — PB-02) but has **no row for queue placement**, which is how this gap survived
-#42. Modern mobile shooters (Bubble Witch, Panda Pop) place the next-bubble preview at
-the bottom of the playfield near the launcher, but those rows are marked *inferred* in
-§3 and must not be cited as fact. Before the production task is triaged I will add a
-**Queue placement** row to the matrix from a citable source with an access date, or
-downgrade the "matching the original" claim in #42.
+not — PB-02) but had **no row for queue placement**, which is how this gap survived
+#42. I added that row on 2026-10-29 and the result matters: **the fidelity argument
+fails.** The gameplay text we cite for the reference describes the pointer, colour
+discipline, ceiling descent and idle auto-fire, and says nothing about a next-bubble
+display; StrategyWiki and Arcade-History were inaccessible and no other citable source
+was found. #42's "matching the original Bust-A-Move layout" is therefore recorded as
+**unverified** (CA open question **C6**), and this feature must stand on playtest
+readability evidence alone. Modern mobile shooters (Bubble Witch, Panda Pop) are
+inferred — not verified — to place the preview at the bottom of the playfield near the
+launcher (§3), and must not be cited as fact.
 
-What we do differently: the reference puts the *next* bubble by the launcher and the
-*queue* elsewhere; we keep both in one stack at the cannon, and we take chrome out
-rather than add it (Pillar 3).
+What we do differently either way: we keep the loaded bubble and its queue in one stack
+at the shot origin, and we take chrome out rather than add it (Pillar 3).
 
 ## Open questions
 

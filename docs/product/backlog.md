@@ -47,8 +47,8 @@ telemetry (vision §5). The score orders a conversation; it does not prove anyth
 | **PB-02** | **Queue only on-board colours** (P1) | CA §4 row 12; `engine.dart` `_refill` | Fairness: no dead shots from a colour that is not on the board | XS · 0.5 wk | **27.0** = (5×3×0.9)/0.5 | Board with red/green/blue only; fire 20 shots; queue never yields yellow, purple or orange. Seeded headless test. |
 | **PB-05** | **Score survives a life loss** (P3) | CA §5.6; `_settleShotAt` → `startLevel` | Fairness: losing a life should not erase the run's points | S · 0.75 wk | **19.2** = (4×4×0.9)/0.75 | Lose a life at 1 200; next board starts at 1 200, same level, lives −1. Engine test. |
 | **PB-03** | **Bounce-preview aim guide** (P2) | CA §4 row 11; Vision P2 | Readability: bank shots become intentional instead of lucky | S · 1.0 wk | **18.0** = (5×4×0.9)/1.0 | Aim 45° at a wall; guide shows one bounce segment ending at the impact cell. Debug overlay: predicted cell == settled cell for ≥ 9 of 10 sampled angles. |
+| **PB-13** | **Next-bubble queue beside the cannon** (P2) | [#42](https://github.com/y0n1/bust_a_move_clone/issues/42) (placement half never built); Vision P2; design-system §5.1/§5.3; [brief](briefs/2026-10-29-next-bubble-queue-at-cannon.md) | Readability: the colour you hold is read where the shot leaves; frees ≈ 90 dp of the 360 dp top bar | S · 0.75 wk | **15.0** = (5×3×0.75)/0.75 | Flag-gated canvas queue beside `engine.cannonX/cannonY`; 360 × 640 screenshot at level 5+ with the wall fully descended shows no overlap with descent bubbles. `lib/game/` diff empty. |
 | **PB-07** | **Pause / resume** (P3) | CA §4 row 6; design-system §5.5 (no paused state) | Interruption tolerance in a browser tab | XS · 0.5 wk | **12.8** = (4×2×0.8)/0.5 | Esc freezes the ticker; resume returns the identical `GameState`. Test asserts zero ticks while paused. |
-| **PB-13** | **Next-bubble queue beside the cannon** (P2) | [#42](https://github.com/y0n1/bust_a_move_clone/issues/42) (placement half never built); Vision P2; design-system §5.1/§5.3; [brief](briefs/2026-10-29-next-bubble-queue-at-cannon.md) | Readability: the colour you hold is read where the shot leaves; frees ≈ 90 dp of the 360 dp top bar | S · 0.75 wk | **12.0** = (5×3×0.8)/0.75 | Flag-gated canvas queue beside `engine.cannonX/cannonY`; 360 × 640 screenshot at level 5+ with the wall fully descended shows no overlap with descent bubbles. `lib/game/` diff empty. |
 | **PB-04** | **Authored levels 1–5** (P1, P5) | CA §4 row 10; Vision P5 | Levels feel designed, replayable and fair; makes retries identical | M · 2.0 wk | **10.0** = (5×5×0.8)/2.0 | Level 1 loads the same fixture every run. Golden test on the bubble map; a recorded input script clears it in ≤ 12 shots. |
 | **PB-09** | **Local high score** (P5) | Spec §Core; Vision Q4 | A reason to replay the same five levels | S · 1.0 wk | **8.4** = (4×3×0.7)/1.0 | Clear level 1 at 3 400; reload; start screen shows `BEST 3 400`. Storage test with a fake store. |
 | **PB-08** | **Shot budget + HUD counter, as a mode** (P5) | Spec §Core; Vision Q2 | A legible second pressure; enables score-attack | S · 1.0 wk | **7.2** = (4×3×0.6)/1.0 | HUD shows `SHOTS 7/20`; at 20 without a clear the level ends with a distinct status. Engine + widget test. |
@@ -73,7 +73,7 @@ because the feature list looks short.
 | PB-09 | A local best score motivates replay. No telemetry; this is a genre assumption. |
 | PB-10 | Audio materially improves feel. Unmeasured; asset licensing unresolved (CA §9 C5). |
 | PB-11 | Power-ups add expression without diluting the skill test. Highest uncertainty in the list. |
-| PB-13 | That the arcade original puts the next bubble by the launcher — asserted in #42, **not** verified in CA; I owe a citable **Queue placement** row in CA §4 before this is triaged. That proximity (rather than the existing ring + arrow) is what removed #42's ambiguity — untested. That the descent row and a canvas queue can coexist without overlap — the spike exists to answer this. |
+| PB-13 | That proximity (rather than the ring + arrow already shipped) is what removes #42's ambiguity — **untested**. That the 360 dp top bar actually overflows — token arithmetic, to be confirmed by the spike's widget test. That a canvas queue and the descent row can coexist — the spike exists to answer this. Confidence is **0.75, not 0.8**: the arcade-fidelity argument #42 leaned on is now recorded as **unverifiable** (CA §4 "Queue placement", C6), so the value rests on playtest readability alone. |
 | PB-12 | The endgame shape is undecided (Vision Q3), so any ramp is provisional. |
 
 ## 4. Sequencing recommendation
@@ -83,7 +83,7 @@ earlier one to be worth shipping.
 
 ### Wave 1 — Prove the core (no new rules, no new assets)
 
-**PB-01 → PB-02 → PB-05 → PB-03 → PB-07 → PB-13.** All ≤ 1 dev-week, all touch existing
+**PB-01 → PB-02 → PB-05 → PB-03 → PB-13 → PB-07.** All ≤ 1 dev-week, all touch existing
 behaviour, none needs new assets. PB-13 is the exception on the UX gate: design-system
 §5.1/§5.3/§5.4 currently place the queue *in* the top bar, so the production change needs
 a UX delta before it can be **Ready** — its flag-gated spike does not, because nothing
