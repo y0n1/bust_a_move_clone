@@ -19,11 +19,11 @@ Two problems, one change.
    and asked for a vertical stack "**positioned next to the cannon on the canvas
    (matching the original Bust-A-Move layout)**". What shipped was the *stack* and the
    *highlight* half, in the HUD row — see
-   [`level_display.dart`](../../lib/gameplay/ui/hud/level_display.dart) (`NEXT` + 28 dp
+   [`level_display.dart`](../../../lib/gameplay/ui/hud/level_display.dart) (`NEXT` + 28 dp
    loaded bubble with arrow + two 18 dp previews, inside the top `Row`). The
    **placement half of #42 was never built**. This brief closes that gap.
 2. **The compact top bar is overloaded.** At the 360 dp floor the `Row` in
-   [`game_screen.dart`](../../lib/gameplay/ui/game_screen.dart) must seat `SCORE`
+   [`game_screen.dart`](../../../lib/gameplay/ui/game_screen.dart) must seat `SCORE`
    (plus the reserved `COMBO` chip) · `LIVES` · `LEVEL` · `NEXT` + queue · restart icon
    in one 56 dp line. Summing the design-system token widths gives ≈ 410 dp of content
    in 336 dp of usable gutter. *(Inference from tokens, not a measurement — the spike
@@ -39,7 +39,7 @@ Two problems, one change.
 | Queue length is 3 (`nextColors[0]` loaded, `[1..2]` previews) | **Fact** | `engine.dart` L197; `model.dart` L128 |
 | Cannon at `(cols/2, rows+1)`; deepest possible bubble row is `rows` at `y = rows × 0.866` | **Fact** | `engine.dart` L147, L223–232 |
 | Layout box height is `rows + 1.2`, so only **0.2 bubble-diameters of clearance exist below the cannon** | **Fact** | `computeLayout`, `game_viewmodel.dart` L201–220 |
-| The design system currently *specifies* the queue in the top-bar stats cluster and fixes z-order and preview counts | **Fact** | [`design-system.md`](../../docs/design/design-system.md) §5.1, §5.3, §5.4 |
+| The design system currently *specifies* the queue in the top-bar stats cluster and fixes z-order and preview counts | **Fact** | [`design-system.md`](../../../docs/design/design-system.md) §5.1, §5.3, §5.4 |
 | Previews are colour-only circles today; §6.2 requires six distinct silhouettes (`× ▲ ▬ ✦ ◆ ▪`) on the queue | **Fact** | `level_display.dart` vs. design-system §6.2 |
 | The arcade original shows the next bubble near the cannon | **Unverifiable (2026-10-29)** — asserted in #42; [CA §4 "Queue placement"](../competitive-analysis.md) records that the cited gameplay text documents *no* next-bubble display and that StrategyWiki and Arcade-History were inaccessible (403). The fidelity claim cannot be relied on | CAs track it as open question **C6**; the spike must earn this on playtest evidence, not on fidelity |
 | Proximity removes the ambiguity #42 described | **Inference** | Gestalt proximity; untested by playtest |
@@ -70,11 +70,15 @@ The queue is painted by `GamePainter` in the canvas layer, anchored beside the c
 and outside the bubble-occupied band, instead of being a widget in the top HUD `Row`.
 
 - Loaded bubble (28 dp, accent ring) sits **beside** the cannon at the cannon row;
-  previews run away from the board edge (2 at compact, 3 medium+ — unchanged from
-  §5.3).
-- The top HUD row keeps `LIVES`, `LEVEL` and restart, and drops `NEXT` + queue.
-- Nothing is tappable — the queue stays an indicator, so the 44 dp target rule (§6.1)
-  does not apply.
+  previews run away from the board edge. **Two previews, every breakpoint** — that is
+  all `GameState.nextColors` supplies (1 loaded + 2), and the engine is frozen here.
+  Design-system §5.3 asks for 3 at medium+, which the shipped widget already cannot do
+  either; the discrepancy goes to UX (open question **6**), it is not a spike requirement.
+- The top HUD row keeps `LIVES`, `LEVEL` and restart, and drops `NEXT` + queue — this
+  is the **production** shape; during the spike the HUD queue stays where it is, so the
+  two placements can be compared honestly behind the flag.
+- Nothing is tappable — the queue stays an indicator, so the 44 dp target rule (§6.4)
+  does not apply. Contrast (§6.1) still does.
 - Debug flag `--dart-define=QUEUE_AT_CANNON=true` selects the new placement; the
   current placement stays the default until the Product Owner approves the switch.
 
@@ -100,8 +104,9 @@ Production task (filed only if the verdict is adopt):
 - [ ] Each preview draws its silhouette symbol (§6.2) — colour is never the only cue.
 - [ ] Top HUD row at 360 dp reports no `RenderFlex` overflow and no reflow when the
       `COMBO` chip appears.
-- [ ] Palette comes from the renderer's existing map; no third palette map is added
-      (design-system §2 already records two).
+- [ ] Palette comes from the renderer's existing map; **no new palette copy** — the
+      design system's inventory (§1, §1.1) already counts three (`level_display.dart`,
+      `bubble_renderer.dart`, `game_viewmodel.dart`); add none.
 - [ ] E2E check QE will run: at phone width, start level 1, fire three shots, and
       confirm the colour that leaves the cannon is the one the queue showed, without
       the player's eye leaving the lower half of the screen.
@@ -112,10 +117,11 @@ Production task (filed only if the verdict is adopt):
 |--------|----------|--------|-----|
 | Queue-to-cannon distance (canvas y of queue centre vs. cannon) | ~500 dp | ≤ 1.5 bubble-diameters | Measured in the paint layer |
 | 360 dp top-bar overflow | unmeasured | 0 overflow errors, 0 reflow | Widget test at 360 × 640 |
-| PX-6 "board reads clearly" (5-player playtest) | none yet | ≥ 4.0 / 5 | Same playtest as vision PX-6, before/after |
+| New survey item — "the board reads clearly at a glance" | none yet | ≥ 4.0 / 5 | Added to the same 5-player moderated playtest that carries vision PX-6 (Perceived feel); it is **not** PX-6, which measures aim responsiveness and pop satisfaction |
 | Shots to first committed decision on level 1 | none | −10 % | Playtest stopwatch |
 
-All four are playtest-measurable; none needs telemetry (Anti-pillar 2 holds).
+Two are measured in code (paint layer, widget test), two by moderated playtest; none
+needs telemetry (Anti-pillar 2 holds).
 
 ## Scope
 
@@ -138,13 +144,13 @@ All four are playtest-measurable; none needs telemetry (Anti-pillar 2 holds).
 | Only **0.2 bubble-diameters** of layout box below the cannon (`boardHeight = rows + 1.2`) | Low if the queue runs beside-and-horizontal; High if it hangs below | Prefer beside-and-horizontal; do not grow `boardHeight` during a spike |
 | **Wide-viewport letterboxing.** `offsetX` yields spare pixels beside the board only on wide viewports, so placement behaves differently at 360 dp vs 1280 dp | Medium | Spike screenshots at both widths (acceptance criteria) |
 | **UX owns the spec.** §5.1/§5.3/§5.4 currently specify the opposite, and DoR requires a linked UX spec for a player-facing change | Blocking for the production task only | UX-1 is already In review — hand the spike screenshots to UX as the delta input; PM does not design details |
-| A third duplicated palette map | Low, but certain if done carelessly | Reuse `bubble_renderer.dart`'s map; delete the HUD entry when the widget dies |
+| A fourth duplicated palette copy (three already exist — design-system §1.1) | Low, but certain if done carelessly | Reuse `bubble_renderer.dart`'s map; delete the HUD entry when the widget dies |
 | Disturbing the open release (OPS-13 / v1.1.0, PB-01 #109) | Low — the spike is debug-flagged and ships nothing | Spike ranks below PB-01; the production task is filed after the v1.1.0 QE PASS |
 | Scope creep into playfield rotation | Would be Anti-pillar 4 territory: hex-offset parity, `_snapToHex`, `_matchGroupAt`, `_dropDetached`, `descentSlack`, the ±60° aim clamp, every seeded test re-keyed | Recorded out of scope; needs its own ADR if ever revived |
 
 ## Competitive reference
 
-Our own matrix ([`competitive-analysis.md`](competitive-analysis.md) §4) tracked queue
+Our own matrix ([`competitive-analysis.md`](../competitive-analysis.md) §4) tracked queue
 *discipline* (the reference draws only from colours still on screen; `_refill` does
 not — PB-02) but had **no row for queue placement**, which is how this gap survived
 #42. I added that row on 2026-10-29 and the result matters: **the fidelity argument
@@ -153,9 +159,10 @@ discipline, ceiling descent and idle auto-fire, and says nothing about a next-bu
 display; StrategyWiki and Arcade-History were inaccessible and no other citable source
 was found. #42's "matching the original Bust-A-Move layout" is therefore recorded as
 **unverified** (CA open question **C6**), and this feature must stand on playtest
-readability evidence alone. Modern mobile shooters (Bubble Witch, Panda Pop) are
-inferred — not verified — to place the preview at the bottom of the playfield near the
-launcher (§3), and must not be cited as fact.
+readability evidence alone. As for modern mobile shooters placing the preview near the
+launcher — **I have no source for that.** CA §3 records nothing about next-bubble
+placement for Bubble Witch or Panda Pop, so treat it as my genre prior, not evidence,
+and do not cite it in the PR or the design-system delta.
 
 What we do differently either way: we keep the loaded bubble and its queue in one stack
 at the shot origin, and we take chrome out rather than add it (Pillar 3).
@@ -173,3 +180,8 @@ at the shot origin, and we take chrome out rather than add it (Pillar 3).
 5. **Is PB-02 (queue only on-board colours) coupled?** PB-02 is engine-side and already
    ranked. If one developer takes both, PB-02 goes first so the queue is written once.
    *(PM call: yes — PB-02 first.)*
+6. **Preview count vs. design-system §5.3.** §5.3 asks for 3 previews at medium+, but
+   `nextColors` supplies loaded + 2, and the shipped `LevelDisplay` already renders 2 at
+   every breakpoint. Either §5.3 becomes "2, all breakpoints" or the engine grows a fourth
+   colour — which is a rules change with seeded-test consequences, out of scope here.
+   *(PM recommendation: fix §5.3 to 2; a deeper queue is a separate brief, if ever.)*
