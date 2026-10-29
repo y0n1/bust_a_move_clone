@@ -4,7 +4,7 @@
 |-------|-------|
 | **Status** | proposed — awaiting Product Owner review |
 | **Owner** | Product Manager |
-| **Date** | 2026-10-23 |
+| **Date** | 2026-10-23 · updated 2026-10-29 (PB-13 added on Product Owner request) |
 | **Task** | PM-3 / [#66](https://github.com/y0n1/bust_a_move_clone/issues/66) |
 | **Inputs** | [`competitive-analysis.md`](competitive-analysis.md), [`vision.md`](vision.md), [`bust_a_move_spec.md`](../bust_a_move_spec.md), `lib/game/engine.dart` |
 | **Companions** | [`design-system.md`](../design/design-system.md), [`2026-10-23-kickoff.md`](../status/2026-10-23-kickoff.md) |
@@ -48,6 +48,7 @@ telemetry (vision §5). The score orders a conversation; it does not prove anyth
 | **PB-05** | **Score survives a life loss** (P3) | CA §5.6; `_settleShotAt` → `startLevel` | Fairness: losing a life should not erase the run's points | S · 0.75 wk | **19.2** = (4×4×0.9)/0.75 | Lose a life at 1 200; next board starts at 1 200, same level, lives −1. Engine test. |
 | **PB-03** | **Bounce-preview aim guide** (P2) | CA §4 row 11; Vision P2 | Readability: bank shots become intentional instead of lucky | S · 1.0 wk | **18.0** = (5×4×0.9)/1.0 | Aim 45° at a wall; guide shows one bounce segment ending at the impact cell. Debug overlay: predicted cell == settled cell for ≥ 9 of 10 sampled angles. |
 | **PB-07** | **Pause / resume** (P3) | CA §4 row 6; design-system §5.5 (no paused state) | Interruption tolerance in a browser tab | XS · 0.5 wk | **12.8** = (4×2×0.8)/0.5 | Esc freezes the ticker; resume returns the identical `GameState`. Test asserts zero ticks while paused. |
+| **PB-13** | **Next-bubble queue beside the cannon** (P2) | [#42](https://github.com/y0n1/bust_a_move_clone/issues/42) (placement half never built); Vision P2; design-system §5.1/§5.3; [brief](briefs/2026-10-29-next-bubble-queue-at-cannon.md) | Readability: the colour you hold is read where the shot leaves; frees ≈ 90 dp of the 360 dp top bar | S · 0.75 wk | **12.0** = (5×3×0.8)/0.75 | Flag-gated canvas queue beside `engine.cannonX/cannonY`; 360 × 640 screenshot at level 5+ with the wall fully descended shows no overlap with descent bubbles. `lib/game/` diff empty. |
 | **PB-04** | **Authored levels 1–5** (P1, P5) | CA §4 row 10; Vision P5 | Levels feel designed, replayable and fair; makes retries identical | M · 2.0 wk | **10.0** = (5×5×0.8)/2.0 | Level 1 loads the same fixture every run. Golden test on the bubble map; a recorded input script clears it in ≤ 12 shots. |
 | **PB-09** | **Local high score** (P5) | Spec §Core; Vision Q4 | A reason to replay the same five levels | S · 1.0 wk | **8.4** = (4×3×0.7)/1.0 | Clear level 1 at 3 400; reload; start screen shows `BEST 3 400`. Storage test with a fake store. |
 | **PB-08** | **Shot budget + HUD counter, as a mode** (P5) | Spec §Core; Vision Q2 | A legible second pressure; enables score-attack | S · 1.0 wk | **7.2** = (4×3×0.6)/1.0 | HUD shows `SHOTS 7/20`; at 20 without a clear the level ends with a distinct status. Engine + widget test. |
@@ -72,6 +73,7 @@ because the feature list looks short.
 | PB-09 | A local best score motivates replay. No telemetry; this is a genre assumption. |
 | PB-10 | Audio materially improves feel. Unmeasured; asset licensing unresolved (CA §9 C5). |
 | PB-11 | Power-ups add expression without diluting the skill test. Highest uncertainty in the list. |
+| PB-13 | That the arcade original puts the next bubble by the launcher — asserted in #42, **not** verified in CA; I owe a citable **Queue placement** row in CA §4 before this is triaged. That proximity (rather than the existing ring + arrow) is what removed #42's ambiguity — untested. That the descent row and a canvas queue can coexist without overlap — the spike exists to answer this. |
 | PB-12 | The endgame shape is undecided (Vision Q3), so any ramp is provisional. |
 
 ## 4. Sequencing recommendation
@@ -81,8 +83,11 @@ earlier one to be worth shipping.
 
 ### Wave 1 — Prove the core (no new rules, no new assets)
 
-**PB-01 → PB-02 → PB-05 → PB-03 → PB-07.** All ≤ 1 dev-week, all touch existing
-behaviour, none needs a UX spec beyond the design system.
+**PB-01 → PB-02 → PB-05 → PB-03 → PB-07 → PB-13.** All ≤ 1 dev-week, all touch existing
+behaviour, none needs new assets. PB-13 is the exception on the UX gate: design-system
+§5.1/§5.3/§5.4 currently place the queue *in* the top bar, so the production change needs
+a UX delta before it can be **Ready** — its flag-gated spike does not, because nothing
+ships.
 
 *Exit criterion:* a first-time player can explain every number on screen and every loss,
 and a bank shot is aimable rather than lucky. This is the smallest set that makes the
@@ -123,6 +128,7 @@ If Wave 1 and 2 slip, this wave is what gets cut.
 | Engine or architecture rewrite | Anti-pillar 4; the deterministic pure-Dart engine is the asset. | Never without an ADR. |
 | Level configs 6–10 | Content cost; PB-04 must prove the layout format first. | After PB-04 ships. |
 | In-game tutorial / onboarding overlay | Level 1 plus the aim line is the tutorial; adding a modal delays first pop (PX-1). | Playtest shows first-session confusion. |
+| Playfield rotation — wall feeds in from a side wall, cannon fires sideways | Raised by the Product Owner 2026-10-29 and declined. Pillar 1 makes the 1994 rules the contract, and the geometry is load-bearing: hex half-offset parity, `_snapToHex`, `_matchGroupAt`, `_dropDetached`, `descentSlack`, the ±60° aim clamp and `cannonY = rows + 1` all assume a ceiling and an upward cannon. XL effort, and every seeded test re-keyed — Anti-pillar 4. | Only as an **additive** "Sideways" mode in its own approved brief, after PB-13 proves the layout question is about the queue and not the orientation. |
 
 ## 6. Mapping to the board
 
@@ -141,7 +147,7 @@ If Wave 1 and 2 slip, this wave is what gets cut.
 | Pillar | Backlog items |
 |--------|---------------|
 | **P1 — Faithful core, better feel** | PB-02, PB-04, PB-06, PB-11 |
-| **P2 — Readable at a glance** | PB-03, PB-08 |
+| **P2 — Readable at a glance** | PB-03, PB-08, PB-13 |
 | **P3 — Immediate, honest feedback** | PB-01, PB-05, PB-07, PB-10 |
 | **P4 — Deterministic, testable rules** | PB-04, PB-06 (both test-first) |
 | **P5 — Bite-sized mastery** | PB-04, PB-08, PB-09, PB-12 |
