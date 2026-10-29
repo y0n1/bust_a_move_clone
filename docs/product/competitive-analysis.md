@@ -139,6 +139,7 @@ not surfaced. `none` = absent. `?` = not verified this session. Ours = v1.0.0 wo
 | **Authored levels** | have — prearranged patterns, 30 levels | have — inferred | have — inferred | have — inferred | have — inferred | **none** — `startLevel` fills the top half randomly |
 | **Aim guide** | partial — pointer direction only (inferred) | have — bounce preview (inferred) | have — inferred | partial — straight line (unverified) | ? | **partial** — straight dotted line, 3.5 units, no bounce |
 | **Queue drawn from on-board colours** | have — verified | ? | ? | ? | ? | **none** — `_refill` samples the whole level palette uniformly |
+| **Queue placement** | **unverified** — the cited gameplay text documents the pointer, colour discipline, descent and idle auto-fire but **no next-bubble display at all** ([Wikipedia, accessed 2026-10-29](https://en.wikipedia.org/wiki/Puzzle_Bobble)); StrategyWiki and Arcade-History returned 403 and no other citable source was found, so "the next bubble sits beside the pointer" is **not established** | ? | ? | ? | ? | **none** — the queue is a widget in the top HUD `Row` (`level_display.dart`), not on the canvas near the cannon. This is the gap PB-13 / #125 addresses. |
 | **Idle auto-fire** | have — verified | none | none | ? | none | **none** |
 | **Lives / retry** | partial — arcade credits/continues | have — lives (inferred) | have — lives (inferred) | ? | ? | **have** — 3 lives; but a loss re-rolls the board and resets score |
 | **Score survives a retry** | have — inferred (arcade convention) | ? | ? | ? | ? | **none** — `startLevel` returns `score: 0` |
@@ -251,3 +252,4 @@ All accessed 2026-10-23.
 | C3 | Should the ceiling model match the reference (attach boundary moves with the cluster), accepting an engine change and a new test class? | Product Owner + Engine Dev |
 | C4 | Is a local high score acceptable in v1.x, given it writes to browser storage? | Product Owner |
 | C5 | Are we allowed to source audio assets, and under what licence? | Product Owner + UX |
+| C6 | Where does the reference actually show the upcoming bubble — beside the pointer, in a side panel, or nowhere on the playfield? [#42](https://github.com/y0n1/bust_a_move_clone/issues/42) asserts "next to the cannon on the canvas (matching the original Bust-A-Move)"; **no citable source was found on 2026-10-29** (§4 "Queue placement"), so the fidelity claim in that issue is downgraded to unverified. Blocks the PB-13 production task, not its spike. | PM + UX |

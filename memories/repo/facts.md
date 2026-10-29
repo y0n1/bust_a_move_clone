@@ -50,6 +50,13 @@ docs/
 - A plain (non-widget) class has no `TickerProvider` — construct `Ticker(_onTick)` directly.
 - Folder name is `viewmodel/` (singular, no underscore) in both features.
 - Board geometry: odd rows offset right by half a bubble. Row 0 has `cols` cells; odd rows have `cols - 1`.
+- **GitHub labels:** the repo has only the default labels plus `dart` and `verified` —
+  there are **no `type/*` labels**, and `gh issue create --label type/ready` fails with
+  `could not add label` without creating the issue. File issues unlabelled.
+- Queue: `GameState.nextColors` holds 3 colours; `[0]` is loaded (28 dp + arrow in the
+  HUD), `[1..2]` are 18 dp previews. `_refill` samples the whole level palette (PB-02).
+- PB-13 (2026-10-29): next-bubble queue beside the cannon — closes the placement half of
+  #42. Spike #125 (Ready, P1). Brief: `docs/product/briefs/2026-10-29-next-bubble-queue-at-cannon.md`.
 - Cannon at `(cols / 2, rows + 1)` in board-space.
 - `Engine.centerOf(row, col)` returns cell center in board-space.
 - `Engine.neighborsOf(row, col)` returns 6 hex-neighbors (handles even/odd offset).
