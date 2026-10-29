@@ -2,8 +2,9 @@ name: Dependency Review
 
 # Gate every change that introduces a third-party package. This is the only check
 # in the pipeline that can say "no" for a reason that has nothing to do with our
-# own code: a new dependency with a known advisory, or one whose licence we
-# cannot ship.
+# own code: a new dependency with a known advisory. Licence denials are possible
+# (allow-/deny-licenses) but are not configured today, so that path cannot fire —
+# see docs/ops/dependencies.md §3.
 #
 # `pull_request` workflows are read from the BASE branch, so this file protects
 # every PR opened after it lands — including PRs that never touch it. Read with
