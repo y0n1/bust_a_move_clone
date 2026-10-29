@@ -107,7 +107,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # A green deploy job only proves Pages accepted the artifact. This job proves
   # the site a visitor actually gets is the site we meant to ship: it loads the
